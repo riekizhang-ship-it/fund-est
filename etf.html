@@ -133,9 +133,12 @@ function fetchJSON(url, timeoutMs) {
       .catch(e => { clearTimeout(t); reject(e); });
   });
 }
+let hostFlip = 0;
 async function getJSON(pathAndQuery) {
   let lastErr = null;
-  for (const h of QUOTE_HOSTS) {
+  const start = hostFlip++ % QUOTE_HOSTS.length;
+  for (let i = 0; i < QUOTE_HOSTS.length; i++) {
+    const h = QUOTE_HOSTS[(start + i) % QUOTE_HOSTS.length];
     try { return await fetchJSON('https://' + h + pathAndQuery, 12000); }
     catch (e) { lastErr = e; }
   }
@@ -458,7 +461,7 @@ async function refreshAll(first) {
   } catch (e) {
     setBadge('off', '行情未连接');
     if (first) $('subInfo').textContent = '实时行情加载失败，正在自动重试；也可手动刷新页面';
-    if (!firstOk && healTries < 6) { healTries++; setTimeout(() => refreshAll(false), 20000); }
+    if (!firstOk && healTries < 40) { healTries++; setTimeout(() => refreshAll(false), 30000); }
   }
 }
 refreshAll(true);
