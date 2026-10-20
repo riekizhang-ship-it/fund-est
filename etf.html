@@ -69,6 +69,11 @@
       <div><span class="ttl" id="dTitle">—</span><div class="indvals" id="dVals"></div></div>
       <button class="close" id="dClose">关闭</button>
     </div>
+    <div class="tabs">
+      <button id="pDay" class="on">日线</button>
+      <button id="pWeek">周线</button>
+      <button id="pMonth">月线</button>
+    </div>
     <div class="chart"><div class="cap"><span id="capP">收盘价（前复权）</span><span id="rngP"></span></div><div id="chP"></div></div>
     <div class="chart"><div class="cap"><span>MACD(12,26,9)</span><span id="rngM"></span></div><div id="chM"></div></div>
     <div class="chart"><div class="cap"><span>KDJ(9,3,3)</span><span id="rngK"></span></div><div id="chK"></div></div>
@@ -83,6 +88,16 @@
       <button id="tabOut">净流出前列</button>
     </div>
     <div id="flowList"><div class="stat">加载中…</div></div>
+  </section>
+
+  <section class="card">
+    <h2>MACD 金叉 / 死叉（日线）</h2>
+    <div class="hint" id="crossHint">每日收盘后自动计算 · 全市场 ETF + 主要指数 · 点任意一行看走势</div>
+    <div class="tabs">
+      <button id="tabGold" class="on">今日金叉</button>
+      <button id="tabDead">今日死叉</button>
+    </div>
+    <div id="crossList"><div class="stat">加载中…</div></div>
   </section>
 
   <div class="search"><input id="q" type="search" placeholder="搜 ETF：名称或代码，如 机器人 / 512480" autocomplete="off"></div>
@@ -295,19 +310,26 @@ function chartMACD(dif, dea, bar, h) {
 }
 
 /* ---------------- 详情 ---------------- */
-let detailSecid = null;
-async function openDetail(secid, name) {
+let detailSecid = null, detailName = '', detailKlt = 101;
+const KLT_CONF = { 101: { days: 500, label: '日线' }, 102: { days: 1700, label: '周线' }, 103: { days: 3300, label: '月线' } };
+function openDetail(secid, name) {
   detailSecid = secid;
+  detailName = name;
   $('detail').style.display = 'block';
-  $('dTitle').innerHTML = name + '<small>' + secid.split('.')[1] + '</small>';
-  $('dVals').textContent = '正在加载日 K 与指标…';
-  $('chP').innerHTML = ''; $('chM').innerHTML = ''; $('chK').innerHTML = '';
   $('detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  loadDetail();
+}
+async function loadDetail() {
+  if (!detailSecid) return;
+  const conf = KLT_CONF[detailKlt];
+  $('dTitle').innerHTML = detailName + '<small>' + detailSecid.split('.')[1] + ' · ' + conf.label + '</small>';
+  $('dVals').textContent = '正在加载' + conf.label + ' K 线与指标…';
+  $('chP').innerHTML = ''; $('chM').innerHTML = ''; $('chK').innerHTML = '';
   try {
-    const beg = new Date(Date.now() - 500 * 864e5);
+    const beg = new Date(Date.now() - conf.days * 864e5);
     const begS = beg.getFullYear() + String(beg.getMonth() + 1).padStart(2, '0') + String(beg.getDate()).padStart(2, '0');
-    const url = 'https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=' + secid +
-      '&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57&klt=101&fqt=1&beg=' + begS + '&end=20500101';
+    const url = 'https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=' + detailSecid +
+      '&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57&klt=' + detailKlt + '&fqt=1&beg=' + begS + '&end=20500101';
     const j = await fetchJSON(url, 15000);
     const kl = (j && j.data && j.data.klines) || [];
     if (kl.length < 40) { $('dVals').textContent = '历史数据不足，无法计算指标（返回 ' + kl.length + ' 根K线）'; return; }
@@ -316,7 +338,7 @@ async function openDetail(secid, name) {
     const M = macd(closes), KJ = kdj(bars);
     const N = 120, sl = a => a.slice(-N);
     const last = bars.length - 1;
-    $('capP').textContent = '收盘价（前复权）· ' + bars[Math.max(0, last - N + 1)].d + ' ~ ' + bars[last].d;
+    $('capP').textContent = '收盘价（前复权）· ' + conf.label + ' · ' + bars[Math.max(0, last - N + 1)].d + ' ~ ' + bars[last].d;
     $('chP').innerHTML = chartLines([{ vals: sl(closes), color: '#1c1e21' }], 130);
     $('chM').innerHTML = chartMACD(sl(M.dif), sl(M.dea), sl(M.bar), 110);
     $('chK').innerHTML = chartLines([
@@ -325,14 +347,51 @@ async function openDetail(secid, name) {
     const f2 = v => v.toFixed(2);
     $('rngM').textContent = 'DIF ' + f2(M.dif[last]) + ' · DEA ' + f2(M.dea[last]) + ' · MACD ' + f2(M.bar[last]);
     $('rngK').textContent = 'K ' + f2(KJ.K[last]) + ' · D ' + f2(KJ.D[last]) + ' · J ' + f2(KJ.J[last]);
-    $('dVals').innerHTML = '最新日：<b>' + bars[last].d + '</b> · 收盘 <b>' + bars[last].c + '</b>' +
+    $('dVals').innerHTML = '最新' + conf.label + '：<b>' + bars[last].d + '</b> · 收盘 <b>' + bars[last].c + '</b>' +
       ' · DIF <b>' + f2(M.dif[last]) + '</b> DEA <b>' + f2(M.dea[last]) + '</b> MACD <b>' + f2(M.bar[last]) + '</b>' +
       ' · K <b>' + f2(KJ.K[last]) + '</b> D <b>' + f2(KJ.D[last]) + '</b> J <b>' + f2(KJ.J[last]) + '</b>';
   } catch (e) {
     $('dVals').textContent = 'K 线加载失败，请稍后重试';
   }
 }
+function setPeriod(klt, btnId) {
+  detailKlt = klt;
+  ['pDay', 'pWeek', 'pMonth'].forEach(id => $(id).classList.remove('on'));
+  $(btnId).classList.add('on');
+  loadDetail();
+}
+$('pDay').addEventListener('click', () => setPeriod(101, 'pDay'));
+$('pWeek').addEventListener('click', () => setPeriod(102, 'pWeek'));
+$('pMonth').addEventListener('click', () => setPeriod(103, 'pMonth'));
 $('dClose').addEventListener('click', () => { $('detail').style.display = 'none'; detailSecid = null; });
+
+/* ---------------- MACD 金叉名单 ---------------- */
+let CROSS = null, crossMode = 'golden';
+async function loadCross() {
+  try {
+    const j = await fetchJSON('./macd-cross.json?t=' + Date.now(), 10000);
+    CROSS = j;
+    renderCross();
+  } catch (e) {
+    $('crossList').innerHTML = '<div class="stat">金叉名单尚未生成（工作日 16:05 自动计算）</div>';
+  }
+}
+function renderCross() {
+  if (!CROSS) return;
+  $('crossHint').textContent = '名单日期 ' + CROSS.date + ' · 扫描 ' + CROSS.scanned + ' 个标的 · 工作日 16:05 自动更新 · 点任意一行看走势';
+  const list = CROSS[crossMode] || [];
+  const el = $('crossList');
+  if (!list.length) { el.innerHTML = '<div class="stat">今日无' + (crossMode === 'golden' ? '金叉' : '死叉') + '</div>'; return; }
+  el.innerHTML = list.map(e =>
+    '<div class="brow" data-secid="' + e.secid + '" data-nm="' + e.name + '">' +
+    '<div class="nm">' + e.name + '<small>' + e.code + ' · ' + e.kind + '</small></div>' +
+    '<div class="rt"><div class="flow ' + cls(e.pct) + '">' + fmtPct(e.pct) + '</div>' +
+    '<div class="pc">DIF ' + e.dif + ' · DEA ' + e.dea + '</div></div></div>'
+  ).join('');
+  el.querySelectorAll('.brow').forEach(r => r.addEventListener('click', () => openDetail(r.dataset.secid, r.dataset.nm)));
+}
+$('tabGold').addEventListener('click', () => { crossMode = 'golden'; $('tabGold').classList.add('on'); $('tabDead').classList.remove('on'); renderCross(); });
+$('tabDead').addEventListener('click', () => { crossMode = 'death'; $('tabDead').classList.add('on'); $('tabGold').classList.remove('on'); renderCross(); });
 
 /* ---------------- 启动与刷新 ---------------- */
 function inTradingHours() {
@@ -358,6 +417,7 @@ async function refreshAll(first) {
   }
 }
 refreshAll(true);
+loadCross();
 setInterval(() => { if (inTradingHours()) refreshAll(false); }, 30000);
 </script>
 </body>
