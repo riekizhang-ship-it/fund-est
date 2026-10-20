@@ -113,6 +113,35 @@ def fetch_boards_bruteforce():
 def market_of(code):
     return 1 if code[0] in '569' else 0
 
+def get_text(url, timeout=15):
+    req = urllib.request.Request(url, headers={'User-Agent': UA['User-Agent'],
+                                                'Referer': 'https://www.10jqka.com.cn/'})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return r.read().decode('utf-8')
+
+def fetch_closes_ths(code):
+    """同花顺备选日 K（quotebridge v6 line，JSONP 文本）：返回 [(YYYY-MM-DD, close)]。"""
+    url = 'https://d.10jqka.com.cn/v6/line/hs_%s/01/last800.js' % code
+    last = None
+    for attempt in range(2):
+        try:
+            t = get_text(url)
+            j = json.loads(t[t.index('(') + 1:t.rindex(')')])
+            bars = []
+            for s in (j.get('data') or '').split(';'):
+                if not s:
+                    continue
+                p = s.split(',')
+                d = p[0]
+                bars.append(('%s-%s-%s' % (d[:4], d[4:6], d[6:8]), float(p[4])))
+            if bars:
+                return bars
+            last = ValueError('empty ths data')
+        except Exception as e:
+            last = e
+        time.sleep(1.5)
+    raise last
+
 def fetch_closes(secid, fqt):
     beg = time.strftime('%Y%m%d', time.localtime(time.time() - 500 * 86400))
     url = ('https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=%s'
@@ -159,11 +188,18 @@ def macd_cross(closes):
 
 def process(item):
     secid, name, kind_label, fqt = item
+    bars = None
     try:
         bars = fetch_closes(secid, fqt)
     except Exception:
-        return None
-    if len(bars) < 40:
+        bars = None
+    if (not bars or len(bars) < 40) and kind_label == 'ETF':
+        code = secid.split('.', 1)[1] if '.' in secid else secid
+        try:
+            bars = fetch_closes_ths(code)
+        except Exception:
+            bars = None
+    if not bars or len(bars) < 40:
         return None
     closes = [c for _, c in bars]
     r = macd_cross(closes)
