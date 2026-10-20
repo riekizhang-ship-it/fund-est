@@ -239,7 +239,7 @@ function renderMore() {
   }
   el.insertAdjacentHTML('beforeend', html);
   el.querySelectorAll('.erow').forEach(r => {
-    if (!r.dataset.bound) { r.dataset.bound = '1'; r.addEventListener('click', () => openDetail(marketOf(r.dataset.code) + '.' + r.dataset.code, r.dataset.nm)); }
+    if (!r.dataset.bound) { r.dataset.bound = '1'; r.addEventListener('click', () => openDetail(marketOf(r.dataset.code) + '.' + r.dataset.code, r.dataset.nm, r.dataset.code)); }
   });
   shown = end;
   $('moreWrap').style.display = shown < view.length ? 'flex' : 'none';
@@ -336,14 +336,48 @@ function chartMACD(dif, dea, bar, h) {
 }
 
 /* ---------------- 详情 ---------------- */
-let detailSecid = null, detailName = '', detailKlt = 101, detailToken = 0;
+let detailSecid = null, detailName = '', detailKlt = 101, detailToken = 0, detailThs = null;
 const KLT_CONF = { 101: { days: 500, label: '日线' }, 102: { days: 1700, label: '周线' }, 103: { days: 3300, label: '月线' } };
-function openDetail(secid, name) {
+function openDetail(secid, name, thsCode) {
   detailSecid = secid;
   detailName = name;
+  detailThs = thsCode || null;
   $('detail').style.display = 'block';
   $('detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
   loadDetail();
+}
+const THS_PERIOD = { 101: '01', 102: '11', 103: '21' };
+const THS_LASTN = { 101: 500, 102: 300, 103: 200 };
+function fetchTHSJsonp(code, periodCode, lastN) {
+  return new Promise((resolve, reject) => {
+    const cbName = 'quotebridge_v6_line_hs_' + code + '_' + periodCode + '_last' + lastN;
+    const s = document.createElement('script');
+    const timer = setTimeout(() => { cleanup(); reject(new Error('ths timeout')); }, 12000);
+    function cleanup() {
+      clearTimeout(timer);
+      try { delete window[cbName]; } catch (e) { window[cbName] = undefined; }
+      if (s.parentNode) s.parentNode.removeChild(s);
+    }
+    window[cbName] = j => { cleanup(); resolve(j); };
+    s.onerror = () => { cleanup(); reject(new Error('ths error')); };
+    s.src = 'https://d.10jqka.com.cn/v6/line/hs_' + code + '/' + periodCode + '/last' + lastN + '.js';
+    document.head.appendChild(s);
+  });
+}
+async function fetchTHSBars(code, klt) {
+  for (let att = 0; att < 2; att++) {
+    try {
+      const j = await fetchTHSJsonp(code, THS_PERIOD[klt], THS_LASTN[klt]);
+      const data = (j && j.data) || '';
+      const bars = data.split(';').filter(Boolean).map(s => {
+        const p = s.split(',');
+        return { d: p[0].slice(0, 4) + '-' + p[0].slice(4, 6) + '-' + p[0].slice(6, 8), o: +p[1], h: +p[2], l: +p[3], c: +p[4] };
+      }).filter(b => b.c > 0);
+      if (bars.length) return bars;
+    } catch (e) { /* 同花顺备选失败则继续重试 */ }
+    if (att < 1) await new Promise(rs => setTimeout(rs, 1200));
+  }
+  return null;
 }
 async function loadDetail(autoRetry) {
   if (!detailSecid) return false;
@@ -362,16 +396,25 @@ async function loadDetail(autoRetry) {
       try { j = await fetchJSON(url, 15000); }
       catch (e) { lastErr = e; if (att < 2) await new Promise(rs => setTimeout(rs, 1200 * (att + 1))); }
     }
-    if (!j) throw lastErr || new Error('kline failed');
     const kl = (j && j.data && j.data.klines) || [];
-    if (kl.length < 40) { $('dVals').textContent = '历史数据不足，无法计算指标（返回 ' + kl.length + ' 根K线）'; return true; }
-    const bars = kl.map(s => { const p = s.split(','); return { d: p[0], o: +p[1], c: +p[2], h: +p[3], l: +p[4] }; });
+    let bars = null, srcTHS = false;
+    if (kl.length >= 40) {
+      bars = kl.map(s => { const p = s.split(','); return { d: p[0], o: +p[1], c: +p[2], h: +p[3], l: +p[4] }; });
+    } else if (detailThs) {
+      bars = await fetchTHSBars(detailThs, detailKlt);
+      srcTHS = !!bars;
+    }
+    if (!bars) {
+      if (j) { $('dVals').textContent = '历史数据不足，无法计算指标（返回 ' + kl.length + ' 根K线）'; return true; }
+      throw lastErr || new Error('kline failed');
+    }
+    if (bars.length < 40) { $('dVals').textContent = '历史数据不足，无法计算指标（返回 ' + bars.length + ' 根K线）'; return true; }
     const closes = bars.map(b => b.c);
     const M = macd(closes), KJ = kdj(bars);
     const N = 120, sl = a => a.slice(-N);
     const last = bars.length - 1;
     $('capP').textContent = '收盘价（前复权）· ' + conf.label + ' · ' + bars[Math.max(0, last - N + 1)].d + ' ~ ' + bars[last].d;
-    $('dNote').textContent = '指标按' + conf.label + '计算；' + (detailKlt === 101 ? '盘中当日 K 线未收盘，数值会随行情跳动，收盘后定格。' : '本周期尚未结束，数值会随行情变化，周期结束后定格。');
+    $('dNote').textContent = '指标按' + conf.label + '计算；' + (detailKlt === 101 ? '盘中当日 K 线未收盘，数值会随行情跳动，收盘后定格。' : '本周期尚未结束，数值会随行情变化，周期结束后定格。') + (srcTHS ? '（东方财富暂不可用，本图为同花顺数据）' : '');
     $('chP').innerHTML = chartLines([{ vals: sl(closes), color: '#1c1e21' }], 130);
     $('chM').innerHTML = chartMACD(sl(M.dif), sl(M.dea), sl(M.bar), 110);
     $('chK').innerHTML = chartLines([
