@@ -112,9 +112,46 @@ def process(item):
     return {'secid': secid, 'code': code, 'name': name, 'kind': kind_label,
             'last_date': bars[-1][0], 'cross': r}
 
+def load_old_ref():
+    try:
+        with open('etf-boards.json', encoding='utf-8') as f:
+            d = json.load(f)
+        return [tuple(x) for x in d.get('etfs', [])], [tuple(x) for x in d.get('boards', [])]
+    except Exception:
+        return [], []
+
+def fetch_etf_list_robust():
+    for attempt in range(6):
+        try:
+            out = fetch_etf_list()
+            if len(out) >= 1000:
+                return out
+            print('etf list too short:', len(out), flush=True)
+        except Exception as e:
+            print('etf list attempt', attempt, 'failed:', e, flush=True)
+        time.sleep(20)
+    return None
+
+def fetch_board_list_robust():
+    for attempt in range(3):
+        try:
+            out = fetch_board_list()
+            if len(out) >= 100:
+                return out
+        except Exception as e:
+            print('board list attempt', attempt, 'failed:', e, flush=True)
+        time.sleep(15)
+    return None
+
 def main():
+    old_etfs, old_boards = load_old_ref()
+    fresh_etfs = fetch_etf_list_robust()
+    etf_list = fresh_etfs if fresh_etfs else old_etfs
+    if not etf_list:
+        print('no ETF list available (fresh failed and no fallback file) — abort')
+        sys.exit(1)
+    print('etf list source:', 'fresh' if fresh_etfs else 'fallback', len(etf_list), flush=True)
     items = []
-    etf_list = fetch_etf_list()
     for code, name in etf_list:
         items.append(('%d.%s' % (market_of(code), code), name, 'ETF', 1))
     for secid, name in INDEXES.items():
@@ -143,16 +180,13 @@ def main():
            'scanned': len(results), 'golden': golden, 'death': death}
     with open('macd-cross.json', 'w', encoding='utf-8') as f:
         json.dump(out, f, ensure_ascii=False)
-    try:
-        board_list = fetch_board_list()
-    except Exception as e:
-        board_list = []
-        print('board list fetch failed:', e)
+    fresh_boards = fetch_board_list_robust()
+    board_list = fresh_boards if fresh_boards else old_boards
     ref = {'etfs': [[c, n] for c, n in etf_list], 'boards': [[c, n] for c, n in board_list]}
     with open('etf-boards.json', 'w', encoding='utf-8') as f:
         json.dump(ref, f, ensure_ascii=False)
-    print('ref lists: etfs', len(ref['etfs']), 'boards', len(ref['boards']))
     print('date:', latest, '| scanned:', len(results), '| golden:', len(golden), '| death:', len(death))
+    print('ref lists: etfs', len(ref['etfs']), 'boards', len(ref['boards']), '(boards source:', 'fresh' if fresh_boards else 'fallback', ')')
 
 if __name__ == '__main__':
     main()
