@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>基金涨跌看板</title>
+<style>
+  .navline { padding: 2px 0 8px; text-align: left; }
+  .navline a { color: #4da3ff; text-decoration: none; font-size: 14px; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+         background: #141414; color: #e8e8e8; font-size: 15px; padding-bottom: 48px; }
+  header { background: #1c1c1e; padding: 14px 16px 0; position: sticky; top: 0; z-index: 20;
+           border-bottom: 1px solid #2c2c2e; }
+  header h1 { font-size: 17px; font-weight: 600; }
+  header .sub { font-size: 12px; color: #8e8e93; margin: 4px 0 10px; }
+  header .sub b { color: #c7c7cc; font-weight: 500; }
+  .tabs { display: flex; gap: 8px; padding-bottom: 10px; }
+  .tab { flex: 1; text-align: center; padding: 9px 0; border-radius: 9px; background: #2c2c2e;
+         color: #c7c7cc; font-weight: 600; font-size: 14px; cursor: pointer; }
+  .tab.on { background: #0a84ff; color: #fff; }
+  .searchbar { display: flex; gap: 8px; margin: 10px 10px 0; }
+  .searchbar input { flex: 1; background: #1c1c1e; border: 1px solid #2c2c2e; border-radius: 10px;
+                     padding: 10px 12px; color: #e8e8e8; font-size: 14px; outline: none; }
+  .searchbar input::placeholder { color: #636366; }
+  .seg { display: flex; gap: 6px; }
+  .seg button { background: #2c2c2e; color: #c7c7cc; border-radius: 9px; padding: 0 12px; font-size: 13px; flex: none; }
+  .seg button.on { background: #0a84ff; color: #fff; }
+  .summary { background: #1c1c1e; margin: 10px 10px 0; border-radius: 12px; padding: 12px 16px;
+             display: flex; justify-content: space-between; align-items: center; }
+  .summary .avg { font-size: 24px; font-weight: 700; }
+  .summary .label { font-size: 12px; color: #8e8e93; }
+  .controls { padding: 10px 12px 0; display: flex; gap: 10px; }
+  button { border: none; border-radius: 10px; padding: 11px 0; font-size: 15px; font-weight: 600; cursor: pointer; }
+  .btn-primary { background: #0a84ff; color: #fff; flex: 1; }
+  .btn-ghost { background: #2c2c2e; color: #e8e8e8; flex: 1; }
+  .fund { background: #1c1c1e; margin: 8px 10px 0; border-radius: 12px; padding: 11px 14px; }
+  .fund .top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .fund .name { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  .fund .pct { font-size: 20px; font-weight: 700; white-space: nowrap; }
+  .fund .meta { display: flex; justify-content: space-between; align-items: center; margin-top: 7px; font-size: 12px; color: #8e8e93; gap: 8px; }
+  .cat { color: #9db8d2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .up { color: #ff4d4f; } .down { color: #2fbf71; } .flat { color: #8e8e93; }
+  .addbtn { background: #2c2c2e; color: #0a84ff; border-radius: 7px; padding: 4px 10px; font-size: 12px; font-weight: 600; flex: none; }
+  .addbtn.added { color: #8e8e93; }
+  .err { color: #ff6b6b; font-size: 13px; padding: 16px 14px; text-align: center; }
+  .hintrow { color: #636366; font-size: 12px; text-align: center; padding: 12px 0 2px; }
+  #editor { display: none; background: #1c1c1e; margin: 10px 10px 0; border-radius: 12px; padding: 14px; }
+  #editor textarea { width: 100%; height: 130px; border: 1px solid #3a3a3c; border-radius: 8px; padding: 10px;
+                     font-size: 14px; font-family: monospace; resize: vertical; background: #141414; color: #e8e8e8; }
+  #editor .hint { font-size: 12px; color: #8e8e93; margin: 8px 0; line-height: 1.7; }
+  #editor .row { display: flex; gap: 10px; margin-top: 8px; }
+  #toast { position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%); background: #2c2c2e;
+           color: #fff; padding: 9px 18px; border-radius: 20px; font-size: 13px; display: none; z-index: 99;
+           box-shadow: 0 4px 16px rgba(0,0,0,.5); }
+  .foot { text-align: center; font-size: 11px; color: #636366; margin-top: 18px; line-height: 1.8; padding: 0 20px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>基金涨跌看板</h1>
+  <div class="navline"><a href="./">切换到 · 指数基金估算榜 →</a></div>
+  <div class="sub" id="hdrSub">加载中…</div>
+  <div class="tabs">
+    <div class="tab on" id="tabRank">全市场涨跌榜</div>
+    <div class="tab" id="tabMine">我的自选</div>
+  </div>
+</header>
+
+<!-- ============ 全市场榜 ============ -->
+<div id="viewRank">
+  <div class="searchbar">
+    <input id="q" type="search" placeholder="搜基金名 / 代码 / 板块，如：半导体、白酒、019144">
+    <div class="seg">
+      <button id="sortDesc" class="on">涨幅↓</button>
+      <button id="sortAsc">涨幅↑</button>
+    </div>
+  </div>
+  <div id="rankList"></div>
+  <div class="controls" id="moreWrap" style="display:none">
+    <button class="btn-ghost" id="btnMore">加载更多</button>
+  </div>
+  <div class="hintrow" id="rankStat"></div>
+</div>
+
+<!-- ============ 我的自选 ============ -->
+<div id="viewMine" style="display:none">
+  <div class="summary">
+    <div><div class="label">自选平均日涨跌</div><div class="avg" id="avgPct">—</div></div>
+    <div style="text-align:right"><div class="label">只数</div><div class="avg" id="mineCount" style="font-size:20px">0</div></div>
+  </div>
+  <div class="controls">
+    <button class="btn-primary" id="btnRefresh">刷新</button>
+    <button class="btn-ghost" id="btnEdit">管理基金代码</button>
+  </div>
+  <div id="editor">
+    <textarea id="codeInput" placeholder="粘贴6位场外基金代码，用逗号/空格/换行分隔"></textarea>
+    <div class="hint">· 代码只保存在本机浏览器，不上传任何服务器<br>· 也可以在涨跌榜里点每只基金右下角的「＋自选」添加<br>· 交易日 9:00–15:30 自选页每60秒自动刷新</div>
+    <div class="row">
+      <button class="btn-primary" id="btnSave">保存</button>
+      <button class="btn-ghost" id="btnCancel">取消</button>
+    </div>
+  </div>
+  <div id="mineList"></div>
+</div>
+
+<div class="foot">数据：东方财富公开接口 · 官方公布净值日涨跌<br>盘中显示上一净值日数据，当日净值公布后自动更新<br>本站为实时加载版，无内置快照</div>
+<div id="toast"></div>
+
+<script>
+/* ================= 类别解析（类型 + 主题/跟踪板块） ================= */
+const THEMES = ['半导体设备','半导体材料','动漫游戏','新能源汽车','汽车零部件','食品饮料','生物医药','生物科技','创新药','交通运输','商贸零售','纺织服装','通信设备','高端装备','先进制造','工业母机','专精特新','智能汽车','锂电池','新能源','人工智能','数字经济','恒生科技','沪深300','中证500','中证1000','中证800','上证50','深证100','创业板','科创50','科创100','纳斯达克100','纳斯达克','标普500','道琼斯','半导体','集成电路','芯片','白酒','乳业','调味品','家电','光伏','风电','储能','电池','汽车','军工','卫星','银行','证券','保险','金融','房地产','地产','建材','建筑','家居','轻工','证券','券商','科技','农业','养殖','畜牧','煤炭','石油','油气','天然气','有色','稀土','钢铁','黄金','机器人','计算机','软件','电子','通信','传媒','游戏','动漫','影视','旅游','物流','电力','公用事业','环保','碳中和','医药','医疗','中药','化工','新材料','消费','养老','教育','云计算','大数据','物联网','红利','低波','价值','成长','质量','动量','日经','富时','标普','恒生','5G'];
+function themeOf(name) {
+  const hits = [];
+  for (const t of THEMES) {
+    if (name.indexOf(t) > -1 && !hits.some(h => h.indexOf(t) > -1 || t.indexOf(h) > -1)) hits.push(t);
+    if (hits.length >= 2) break;
+  }
+  return hits.join('·');
+}
+function typeOf(name) {
+  let t;
+  if (/联接/.test(name)) t = 'ETF联接';
+  else if (/ETF/.test(name)) t = 'ETF';
+  else if (/指数增强/.test(name)) t = '指数增强';
+  else if (/指数|中证|上证|深证|沪深|创业板指|科创/.test(name)) t = '指数型';
+  else if (/债券|纯债|短债|中短债|信用债|国债|转债|政金债/.test(name)) t = '债券型';
+  else if (/货币|现金|活期宝/.test(name)) t = '货币型';
+  else if (/LOF/.test(name)) t = 'LOF';
+  else if (/混合/.test(name)) t = '混合型';
+  else if (/股票/.test(name)) t = '股票型';
+  else t = '其他';
+  if (/恒生|纳斯达克|标普|道琼斯|日经|德国|法国|富时|海外|全球|亚太|美国|欧洲|日本|越南|印度|中韩|韩国/.test(name)) t = 'QDII·' + t;
+  return t;
+}
+function catOf(name) {
+  const th = themeOf(name), ty = typeOf(name);
+  return th ? (ty + ' · ' + th) : ty;
+}
+
+/* ================= 通用 ================= */
+const LS_KEY = 'fundCodesV2';
+function getCodes() { try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch (e) { return []; } }
+function setCodes(c) { localStorage.setItem(LS_KEY, JSON.stringify(c)); }
+function cls(v) { return v > 0 ? 'up' : (v < 0 ? 'down' : 'flat'); }
+function fmt(v) { return (v > 0 ? '+' : '') + v.toFixed(2) + '%'; }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', 1600);
+}
+
+/* ================= 全市场榜 ================= */
+let ALL = [], view = [], sortDir = -1, shown = 0;
+const PAGE = 100;
+const RANK_URL = 'https://fund.eastmoney.com/data/rankhandler.aspx?op=ph&dt=kf&ft=all&rs=&gs=0&sc=rzdf&st=desc&qdii=&tabSubtype=,,,,,&pi=1&pn=25000&dx=1';
+
+/* 内置快照（涨幅前1000只）：实时加载失败时直接显示，打开即用 */
+const SNAP = null; /* 网站版：无内置快照，实时加载 */
+function snapItems() {
+  if (!SNAP || !SNAP.items) return [];
+  return SNAP.items.map(r => ({ code: r[0], name: r[1], pin: '', date: SNAP.date,
+                               nav: r[3], pct: (r[2] === null || r[2] === undefined) ? null : parseFloat(r[2]) }));
+}
+function snapBadge() { return '（快照 · 净值日 <b>' + SNAP.date + '</b>）'; }
+
+function parseRank() {
+  const rd = window.rankData;
+  if (!rd || !rd.datas) { liveFailed(ALL.length > 0, '数据格式异常'); return; }
+  window._rankLive = true;
+  ALL = rd.datas.map(s => {
+    const p = s.split(',');
+    return { code: p[0], name: p[1], pin: (p[2] || '').toLowerCase(), date: p[3],
+             nav: p[4], pct: p[6] === '' || p[6] === undefined ? null : parseFloat(p[6]) };
+  }).filter(x => x.code && x.name);
+  const d0 = ALL.length ? ALL[0].date : '—';
+  document.getElementById('hdrSub').innerHTML =
+    '全市场 <b>' + ALL.length.toLocaleString() + '</b> 只开放式基金 · 净值日 <b>' + d0 + '</b> · 官方日涨跌';
+  applyFilter();
+}
+function applyFilter() {
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  view = ALL.filter(x => !q || x.name.toLowerCase().indexOf(q) > -1 || x.code.indexOf(q) > -1 ||
+                         x.pin.indexOf(q) > -1 || catOf(x.name).toLowerCase().indexOf(q) > -1);
+  view.sort((a, b) => {
+    if (sortDir === -1) return (b.pct === null ? -Infinity : b.pct) - (a.pct === null ? -Infinity : a.pct);
+    return (a.pct === null ? Infinity : a.pct) - (b.pct === null ? Infinity : b.pct);
+  });
+  shown = 0;
+  document.getElementById('rankList').innerHTML = '';
+  document.getElementById('rankStat').textContent = q ? ('匹配 ' + view.length.toLocaleString() + ' 只') : '';
+  renderMore();
+}
+function renderMore() {
+  const list = document.getElementById('rankList');
+  const mine = getCodes();
+  const end = Math.min(shown + PAGE, view.length);
+  let html = '';
+  for (let i = shown; i < end; i++) {
+    const x = view[i];
+    const added = mine.indexOf(x.code) > -1;
+    html += '<div class="fund"><div class="top"><div class="name">' + esc(x.name) + '</div>' +
+      '<div class="pct ' + (x.pct === null ? 'flat' : cls(x.pct)) + '">' + (x.pct === null ? '—' : fmt(x.pct)) + '</div></div>' +
+      '<div class="meta"><span class="cat">' + x.code + ' · ' + esc(catOf(x.name)) + '</span>' +
+      '<span>净值 ' + x.nav + '</span>' +
+      '<button class="addbtn' + (added ? ' added' : '') + '" data-add="' + x.code + '">' + (added ? '已自选' : '＋自选') + '</button></div></div>';
+  }
+  list.insertAdjacentHTML('beforeend', html);
+  shown = end;
+  document.getElementById('moreWrap').style.display = shown < view.length ? 'flex' : 'none';
+  document.getElementById('rankStat').textContent =
+    (document.getElementById('q').value.trim() ? '匹配 ' + view.length.toLocaleString() + ' 只 · ' : '') +
+    '已显示 ' + shown.toLocaleString() + ' / ' + view.length.toLocaleString() + ' 只';
+}
+function rankError(msg) {
+  document.getElementById('rankList').innerHTML = '<div class="err">' + esc(msg) + '<br><br><button class="btn-ghost" style="padding:9px 22px" onclick="loadRank()">重新加载</button></div>';
+  document.getElementById('hdrSub').textContent = '榜单加载失败';
+}
+function liveFailed(hasSnap, why) {
+  if (hasSnap) { toast('实时榜单加载失败，当前为快照数据'); }
+  else rankError('榜单加载失败' + (why ? '：' + why : '') + '，请检查网络后点「重新加载」');
+}
+function loadRank() {
+  const hasSnap = ALL.length > 0;
+  if (!hasSnap) {
+    document.getElementById('rankList').innerHTML = '<div class="err" style="color:#8e8e93">正在加载全市场榜单（约2万只，稍等几秒）…</div>';
+    document.getElementById('hdrSub').textContent = '加载中…';
+  }
+  const old = document.getElementById('rankScript');
+  if (old) old.remove();
+  const finish = ok => {
+    clearTimeout(window._rankTimer);
+    if (ok) {
+      try { parseRank(); toast('已更新为实时榜单'); }
+      catch (e) { liveFailed(hasSnap, '解析失败：' + e.message); }
+    } else liveFailed(hasSnap, '');
+  };
+  const s = document.createElement('script');
+  s.id = 'rankScript';
+  s.src = RANK_URL + '&v=' + Date.now();
+  s.onload = () => finish(true);
+  s.onerror = () => {
+    /* script 标签被拦截时的兜底：换 fetch 试一次 */
+    fetch(RANK_URL + '&v=' + Date.now()).then(r => r.text()).then(t => {
+      const m = t.match(/var\s+rankData\s*=\s*(\{[\s\S]*\})\s*;?\s*$/);
+      if (m) { new Function('var rankData=' + m[1] + ';window.rankData=rankData;')(); finish(true); }
+      else finish(false);
+    }).catch(() => finish(false));
+  };
+  document.body.appendChild(s);
+  window._rankTimer = setTimeout(() => { if (!window._rankLive) finish(false); }, 60000);
+}
+document.getElementById('q').addEventListener('input', () => { if (ALL.length) applyFilter(); });
+document.getElementById('btnMore').onclick = renderMore;
+document.getElementById('sortDesc').onclick = function () { sortDir = -1; this.classList.add('on'); document.getElementById('sortAsc').classList.remove('on'); applyFilter(); };
+document.getElementById('sortAsc').onclick = function () { sortDir = 1; this.classList.add('on'); document.getElementById('sortDesc').classList.remove('on'); applyFilter(); };
+document.getElementById('rankList').addEventListener('click', e => {
+  const b = e.target.closest('[data-add]');
+  if (!b) return;
+  const code = b.getAttribute('data-add');
+  const codes = getCodes();
+  if (codes.indexOf(code) === -1) { codes.push(code); setCodes(codes); toast('已加入自选：' + code); }
+  else toast('已在自选中');
+  b.textContent = '已自选'; b.classList.add('added');
+});
+
+/* ================= 我的自选 ================= */
+const MAPI = 'https://fundmobapi.eastmoney.com/FundMNewApi/FundMNFInfo';
+const deviceId = 'web' + Math.random().toString(36).slice(2, 10);
+function inTradingHours() {
+  const d = new Date(), day = d.getDay();
+  if (day === 0 || day === 6) return false;
+  const m = d.getHours() * 60 + d.getMinutes();
+  return m >= 540 && m <= 930;
+}
+async function refreshMine() {
+  const list = document.getElementById('mineList');
+  const codes = getCodes();
+  if (!codes.length) {
+    list.innerHTML = '<div class="err" style="color:#8e8e93">自选还是空的 — 在涨跌榜点「＋自选」，或点「管理基金代码」粘贴代码。</div>';
+    document.getElementById('avgPct').textContent = '—';
+    document.getElementById('mineCount').textContent = '0';
+    return;
+  }
+  try {
+    const res0 = await (async () => {
+      const url = MAPI + '?pageIndex=1&pageSize=' + codes.length +
+        '&plat=Android&appType=ttjj&product=EFund&Version=6.3.8&deviceid=' + deviceId +
+        '&Fcodes=' + encodeURIComponent(codes.join(','));
+      const res = await fetch(url);
+      const json = await res.json();
+      if (json.Datas && json.Datas.length) return json;
+      throw new Error('empty');
+    })().catch(() => {
+      /* 实时接口失败：从榜单快照里拼数据 */
+      const datas = [];
+      if (SNAP && SNAP.items) codes.forEach(c => {
+        const x = SNAP.items.find(r => r[0] === c);
+        if (x) datas.push({ FCODE: x[0], SHORTNAME: x[1], NAV: x[3], NAVCHGRT: String(x[2]),
+                             PDATE: SNAP.date, GSZZL: '' });
+      });
+      if (datas.length) { toast('自选实时数据失败，显示快照数据（' + SNAP.date + '）'); return { Datas: datas }; }
+      throw new Error('netfail');
+    });
+    const json = res0;
+    const byCode = {};
+    (json.Datas || []).forEach(d => { byCode[d.FCODE] = d; });
+    const items = codes.map(c => byCode[c] ? { ok: true, d: byCode[c] } : { ok: false, code: c });
+    items.sort((a, b) => {
+      const va = a.ok ? valOf(a.d) : -Infinity, vb = b.ok ? valOf(b.d) : -Infinity;
+      return vb - va;
+    });
+    let sum = 0, n = 0, html = '';
+    items.forEach(it => {
+      if (!it.ok) {
+        html += '<div class="fund"><div class="top"><div class="name">' + it.code + '</div>' +
+          '<div class="pct flat">无效</div></div><div class="meta"><span>代码无对应基金，请在管理里删除</span><span></span></div></div>';
+        return;
+      }
+      const d = it.d, v = valOf(d);
+      const isEst = d.GSZZL !== null && d.GSZZL !== undefined && d.GSZZL !== '';
+      sum += v; n++;
+      html += '<div class="fund"><div class="top"><div class="name">' + esc(d.SHORTNAME) + '</div>' +
+        '<div class="pct ' + cls(v) + '">' + fmt(v) + '</div></div>' +
+        '<div class="meta"><span class="cat">' + d.FCODE + ' · ' + esc(catOf(d.SHORTNAME)) + (isEst ? ' · 估算' : ' · 官方') + '</span>' +
+        '<span>净值 ' + d.NAV + ' · ' + (d.PDATE || '') + '</span></div></div>';
+    });
+    list.innerHTML = html;
+    document.getElementById('mineCount').textContent = n;
+    const avgEl = document.getElementById('avgPct');
+    if (n) { const avg = sum / n; avgEl.textContent = fmt(avg); avgEl.className = 'avg ' + cls(avg); }
+    else { avgEl.textContent = '—'; avgEl.className = 'avg'; }
+  } catch (e) {
+    list.innerHTML = '<div class="err">自选加载失败，点「刷新」重试。</div>';
+  }
+}
+function valOf(d) {
+  if (d.GSZZL !== null && d.GSZZL !== undefined && d.GSZZL !== '') return parseFloat(d.GSZZL);
+  return parseFloat(d.NAVCHGRT);
+}
+document.getElementById('btnRefresh').onclick = refreshMine;
+document.getElementById('btnEdit').onclick = () => {
+  const ed = document.getElementById('editor');
+  ed.style.display = ed.style.display === 'block' ? 'none' : 'block';
+  if (ed.style.display === 'block') document.getElementById('codeInput').value = getCodes().join('\n');
+};
+document.getElementById('btnCancel').onclick = () => { document.getElementById('editor').style.display = 'none'; };
+document.getElementById('btnSave').onclick = () => {
+  const out = [];
+  document.getElementById('codeInput').value.split(/[\s,，;；、]+/).forEach(s => {
+    s = s.trim();
+    if (/^\d{6}$/.test(s) && out.indexOf(s) === -1) out.push(s);
+  });
+  setCodes(out);
+  document.getElementById('editor').style.display = 'none';
+  refreshMine();
+  toast('自选已保存：' + out.length + ' 只');
+};
+
+/* ================= 标签页切换 ================= */
+function showTab(mine) {
+  document.getElementById('viewRank').style.display = mine ? 'none' : 'block';
+  document.getElementById('viewMine').style.display = mine ? 'block' : 'none';
+  document.getElementById('tabRank').classList.toggle('on', !mine);
+  document.getElementById('tabMine').classList.toggle('on', mine);
+  if (mine) refreshMine();
+}
+document.getElementById('tabRank').onclick = () => showTab(false);
+document.getElementById('tabMine').onclick = () => showTab(true);
+
+(function boot() {
+  const s = snapItems();
+  if (s.length) {
+    ALL = s;
+    document.getElementById('hdrSub').innerHTML =
+      '全市场 <b>' + ALL.length.toLocaleString() + '</b> 只' + snapBadge() + ' · 正在加载实时…';
+    applyFilter();
+  }
+  loadRank();
+})();
+setInterval(() => { if (inTradingHours() && document.getElementById('viewMine').style.display !== 'none') refreshMine(); }, 60000);
+</script>
+</body>
+</html>
