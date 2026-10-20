@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ETF实时榜 · 资金流 · MACD/KDJ</title>
+<style>
+  :root { --up:#d43a2f; --down:#1a9e57; --ink:#1c1e21; --sub:#8a8f98; --line:#ececf0; --bg:#f6f6f8; --card:#fff; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--ink); }
+  .wrap { max-width:860px; margin:0 auto; padding:14px 12px 40px; }
+  header { padding:6px 2px 10px; }
+  h1 { font-size:20px; margin:0 0 4px; display:inline-block; }
+  .badge { display:inline-block; vertical-align:2px; margin-left:8px; font-size:11px; padding:2px 8px; border-radius:99px; background:#e8f6ee; color:var(--down); }
+  .badge.off { background:#fdeceb; color:var(--up); }
+  .badge.load { background:#eef1f5; color:var(--sub); }
+  .nav { font-size:13px; margin-top:6px; }
+  .nav a { color:#2f6fd0; text-decoration:none; margin-right:14px; }
+  .sub { color:var(--sub); font-size:12.5px; margin-top:6px; line-height:1.55; }
+  .card { background:var(--card); border-radius:14px; padding:12px 12px 6px; margin-top:12px; box-shadow:0 1px 3px rgba(20,20,40,.05); }
+  .card h2 { font-size:15.5px; margin:2px 0 4px; }
+  .card .hint { font-size:12px; color:var(--sub); margin-bottom:6px; }
+  .tabs { display:flex; gap:8px; margin:8px 0 4px; }
+  .tabs button { border:1px solid var(--line); background:#fff; border-radius:99px; padding:5px 14px; font-size:13px; color:var(--ink); }
+  .tabs button.on { background:#1c1e21; color:#fff; border-color:#1c1e21; }
+  .brow { display:flex; justify-content:space-between; align-items:center; padding:9px 2px; border-top:1px solid var(--line); cursor:pointer; }
+  .brow:first-of-type { border-top:none; }
+  .brow .nm { font-size:14.5px; }
+  .brow .nm small { color:var(--sub); font-size:11.5px; margin-left:6px; }
+  .brow .rt { text-align:right; }
+  .brow .flow { font-size:14.5px; font-weight:600; }
+  .brow .pc { font-size:12px; color:var(--sub); }
+  .up { color:var(--up); } .down { color:var(--down); }
+  .search { margin-top:12px; }
+  .search input { width:100%; padding:11px 12px; font-size:15px; border:1px solid var(--line); border-radius:10px; background:var(--card); outline:none; }
+  .erow { display:flex; justify-content:space-between; align-items:center; padding:10px 2px; border-top:1px solid var(--line); cursor:pointer; }
+  .erow:first-of-type { border-top:none; }
+  .erow .nm { font-size:14.5px; max-width:62%; }
+  .erow .nm small { display:block; color:var(--sub); font-size:11.5px; margin-top:1px; }
+  .erow .rt { text-align:right; }
+  .erow .pct { font-size:16px; font-weight:600; }
+  .erow .pr { font-size:12px; color:var(--sub); }
+  .more { display:flex; justify-content:center; padding:12px; }
+  .more button { border:1px solid var(--line); background:#fff; border-radius:99px; padding:8px 22px; font-size:13.5px; }
+  .stat { text-align:center; color:var(--sub); font-size:12px; padding:8px 0 2px; }
+  #detail { display:none; }
+  #detail .hd { display:flex; justify-content:space-between; align-items:flex-start; }
+  #detail .ttl { font-size:16.5px; font-weight:600; }
+  #detail .ttl small { color:var(--sub); font-size:12px; font-weight:400; margin-left:6px; }
+  #detail .close { border:1px solid var(--line); background:#fff; border-radius:99px; padding:4px 14px; font-size:13px; }
+  .indvals { font-size:12.5px; color:#444; line-height:1.7; margin:6px 0 2px; }
+  .indvals b { font-variant-numeric:tabular-nums; }
+  .chart { margin-top:8px; }
+  .chart .cap { font-size:12px; color:var(--sub); margin-bottom:2px; display:flex; justify-content:space-between; }
+  svg { width:100%; display:block; }
+  .foot { color:var(--sub); font-size:12px; line-height:1.7; margin-top:16px; padding:0 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>ETF实时榜 · 资金流</h1><span class="badge load" id="liveBadge">加载中…</span>
+    <div class="nav"><a href="./index.html">指数基金实时估算榜</a><a href="./rank.html">全市场涨跌榜+自选</a></div>
+    <div class="sub" id="subInfo">正在加载全市场 ETF 与行业资金流…</div>
+  </header>
+
+  <section class="card" id="detail">
+    <div class="hd">
+      <div><span class="ttl" id="dTitle">—</span><div class="indvals" id="dVals"></div></div>
+      <button class="close" id="dClose">关闭</button>
+    </div>
+    <div class="chart"><div class="cap"><span id="capP">收盘价（前复权）</span><span id="rngP"></span></div><div id="chP"></div></div>
+    <div class="chart"><div class="cap"><span>MACD(12,26,9)</span><span id="rngM"></span></div><div id="chM"></div></div>
+    <div class="chart"><div class="cap"><span>KDJ(9,3,3)</span><span id="rngK"></span></div><div id="chK"></div></div>
+    <div class="hint" style="margin-top:6px">指标按日线计算；盘中当日 K 线未收盘，数值会随行情跳动，收盘后定格。</div>
+  </section>
+
+  <section class="card">
+    <h2>行业板块资金流</h2>
+    <div class="hint">东方财富口径 · 主力净流入额（盘中实时）· 点任意板块看它的 MACD/KDJ</div>
+    <div class="tabs">
+      <button id="tabIn" class="on">净流入前列</button>
+      <button id="tabOut">净流出前列</button>
+    </div>
+    <div id="flowList"><div class="stat">加载中…</div></div>
+  </section>
+
+  <div class="search"><input id="q" type="search" placeholder="搜 ETF：名称或代码，如 机器人 / 512480" autocomplete="off"></div>
+
+  <section class="card">
+    <h2>全市场 ETF 实时榜</h2>
+    <div class="hint">场内价格涨幅 · 按涨幅排序 · 点任意一行看 K 线 / MACD / KDJ</div>
+    <div id="etfList"><div class="stat">加载中…</div></div>
+    <div class="more" id="moreWrap" style="display:none"><button id="moreBtn">显示更多</button></div>
+    <div class="stat" id="stat"></div>
+  </section>
+
+  <div class="foot">数据来源：东方财富实时行情。ETF 涨幅为场内成交价涨幅，与晚上公布的单位净值涨幅是两个数（差在折溢价）；资金流为东方财富按委托单大小划分的主力口径，与同花顺口径略有差异。MACD/KDJ 为通用技术指标，仅供参考，不构成投资建议。</div>
+</div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const QUOTE_HOSTS = ['push2.eastmoney.com', 'push2delay.eastmoney.com'];
+const FLOW_FS = 'm:90+t:2';
+const ETF_FS = 'b:MK0021,b:MK0022,b:MK0023,b:MK0024';
+let ETFS = [], view = [], shown = 0, flowMode = 'in', flows = { in: [], out: [] };
+const PAGE = 100;
+
+function fetchJSON(url, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), timeoutMs || 12000);
+    fetch(url, { signal: ctl.signal, headers: {} })
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(j => { clearTimeout(t); resolve(j); })
+      .catch(e => { clearTimeout(t); reject(e); });
+  });
+}
+async function getJSON(pathAndQuery) {
+  let lastErr = null;
+  for (const h of QUOTE_HOSTS) {
+    try { return await fetchJSON('https://' + h + pathAndQuery, 12000); }
+    catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error('network');
+}
+const fmtPct = v => (v === null || v === undefined || isNaN(v)) ? '—' : (v > 0 ? '+' : '') + Number(v).toFixed(2) + '%';
+const cls = v => (v === null || v === undefined || isNaN(v)) ? '' : (v > 0 ? 'up' : (v < 0 ? 'down' : ''));
+const fmtFlow = v => {
+  if (v === null || v === undefined || isNaN(v)) return '—';
+  const a = Math.abs(v);
+  const s = a >= 1e8 ? (a / 1e8).toFixed(2) + '亿' : (a / 1e4).toFixed(0) + '万';
+  return (v > 0 ? '+' : (v < 0 ? '−' : '')) + s;
+};
+
+/* ---------------- 行业资金流 ---------------- */
+async function loadFlows() {
+  const base = '/api/qt/clist/get?pz=15&np=1&fltt=2&invt=2&fid=f62&fs=' + FLOW_FS + '&fields=f12,f14,f3,f62,f184';
+  const [jIn, jOut] = await Promise.all([
+    getJSON(base + '&po=1'),
+    getJSON(base + '&po=0').catch(() => null)
+  ]);
+  const map = d => ((d && d.data && d.data.diff) || []).map(x => ({ code: x.f12, name: x.f14, pct: x.f3, flow: x.f62, share: x.f184 }));
+  flows.in = map(jIn);
+  if (jOut) flows.out = map(jOut);
+  renderFlows();
+}
+function renderFlows() {
+  const list = flows[flowMode];
+  const el = $('flowList');
+  if (!list.length) { el.innerHTML = '<div class="stat">资金流加载失败，稍后自动重试</div>'; return; }
+  el.innerHTML = list.map((b, i) =>
+    '<div class="brow" data-bk="' + b.code + '" data-nm="' + b.name + '">' +
+    '<div class="nm">' + (i + 1) + '. ' + b.name + '<small>' + b.code + '</small></div>' +
+    '<div class="rt"><div class="flow ' + cls(b.flow) + '">' + fmtFlow(b.flow) + '</div>' +
+    '<div class="pc">板块 ' + fmtPct(b.pct) + ' · 占比 ' + (b.share === null || b.share === undefined ? '—' : b.share + '%') + '</div></div></div>'
+  ).join('');
+  el.querySelectorAll('.brow').forEach(r => r.addEventListener('click', () => openDetail('90.' + r.dataset.bk, r.dataset.nm + '（板块）')));
+}
+$('tabIn').addEventListener('click', () => { flowMode = 'in'; $('tabIn').classList.add('on'); $('tabOut').classList.remove('on'); renderFlows(); });
+$('tabOut').addEventListener('click', () => { flowMode = 'out'; $('tabOut').classList.add('on'); $('tabIn').classList.remove('on'); renderFlows(); });
+
+/* ---------------- ETF 榜 ---------------- */
+async function loadETFs() {
+  const pz = 100;
+  let pn = 1, all = [], total = Infinity;
+  while (all.length < total && pn <= 25) {
+    const j = await getJSON('/api/qt/clist/get?pn=' + pn + '&pz=' + pz + '&po=1&np=1&fltt=2&invt=2&fid=f3&fs=' + ETF_FS + '&fields=f12,f14,f2,f3,f6');
+    const d = j && j.data;
+    if (!d || !d.diff) break;
+    total = d.total;
+    for (const x of d.diff) all.push({ code: x.f12, name: x.f14, price: x.f2, pct: x.f3, amt: x.f6 });
+    if (!d.diff.length) break;
+    pn++;
+  }
+  ETFS = all;
+  applyFilter();
+  return all.length;
+}
+function applyFilter() {
+  const q = $('q').value.trim().toLowerCase();
+  view = q ? ETFS.filter(e => e.name.toLowerCase().includes(q) || e.code.includes(q)) : ETFS.slice();
+  $('etfList').innerHTML = '';
+  shown = 0;
+  renderMore();
+}
+function renderMore() {
+  const el = $('etfList');
+  const end = Math.min(shown + PAGE, view.length);
+  let html = '';
+  for (let i = shown; i < end; i++) {
+    const e = view[i];
+    html += '<div class="erow" data-code="' + e.code + '" data-nm="' + e.name + '">' +
+      '<div class="nm">' + e.name + '<small>' + e.code + '</small></div>' +
+      '<div class="rt"><div class="pct ' + cls(e.pct) + '">' + fmtPct(e.pct) + '</div>' +
+      '<div class="pr">现价 ' + (e.price === null || e.price === undefined ? '—' : e.price) + '</div></div></div>';
+  }
+  el.insertAdjacentHTML('beforeend', html);
+  el.querySelectorAll('.erow').forEach(r => {
+    if (!r.dataset.bound) { r.dataset.bound = '1'; r.addEventListener('click', () => openDetail(marketOf(r.dataset.code) + '.' + r.dataset.code, r.dataset.nm)); }
+  });
+  shown = end;
+  $('moreWrap').style.display = shown < view.length ? 'flex' : 'none';
+  $('stat').textContent = '已显示 ' + shown + ' / ' + view.length + ' 只' + (ETFS.length !== view.length ? '（全市场共 ' + ETFS.length + ' 只）' : '');
+}
+$('moreBtn').addEventListener('click', renderMore);
+$('q').addEventListener('input', applyFilter);
+function marketOf(code) { return /^[569]/.test(code) ? 1 : 0; }
+
+/* ---------------- 指标 ---------------- */
+function ema(arr, n) {
+  const k = 2 / (n + 1), out = [];
+  let prev = null;
+  for (const v of arr) { prev = prev === null ? v : v * k + prev * (1 - k); out.push(prev); }
+  return out;
+}
+function macd(closes) {
+  const e12 = ema(closes, 12), e26 = ema(closes, 26);
+  const dif = closes.map((_, i) => e12[i] - e26[i]);
+  const dea = ema(dif, 9);
+  const bar = dif.map((v, i) => 2 * (v - dea[i]));
+  return { dif, dea, bar };
+}
+function kdj(bars) {
+  const K = [], D = [], J = [];
+  let k = 50, d = 50;
+  for (let i = 0; i < bars.length; i++) {
+    const s = Math.max(0, i - 8);
+    let hh = -Infinity, ll = Infinity;
+    for (let j = s; j <= i; j++) { hh = Math.max(hh, bars[j].h); ll = Math.min(ll, bars[j].l); }
+    const rsv = hh === ll ? 50 : (bars[i].c - ll) / (hh - ll) * 100;
+    k = 2 / 3 * k + 1 / 3 * rsv;
+    d = 2 / 3 * d + 1 / 3 * k;
+    K.push(k); D.push(d); J.push(3 * k - 2 * d);
+  }
+  return { K, D, J };
+}
+
+/* ---------------- 图表 ---------------- */
+function scalePath(vals, w, h, pad) {
+  let mn = Infinity, mx = -Infinity;
+  for (const v of vals) { if (v === null || v === undefined) continue; mn = Math.min(mn, v); mx = Math.max(mx, v); }
+  if (!isFinite(mn)) return { d: '', mn: 0, mx: 0 };
+  if (mx === mn) { mx += 1; mn -= 1; }
+  const X = i => pad + (w - 2 * pad) * i / (vals.length - 1);
+  const Y = v => pad + (h - 2 * pad) * (1 - (v - mn) / (mx - mn));
+  let d = '';
+  vals.forEach((v, i) => { if (v === null || v === undefined) return; d += (d ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1) + ' '; });
+  return { d, mn, mx, X, Y };
+}
+function chartLines(seriesList, h) {
+  const w = 720, pad = 6;
+  let all = [];
+  seriesList.forEach(s => all = all.concat(s.vals));
+  let mn = Infinity, mx = -Infinity;
+  for (const v of all) { if (v === null || v === undefined) continue; mn = Math.min(mn, v); mx = Math.max(mx, v); }
+  if (!isFinite(mn)) return '';
+  if (mx === mn) { mx += 1; mn -= 1; }
+  const X = i => pad + (w - 2 * pad) * i / (seriesList[0].vals.length - 1);
+  const Y = v => pad + (h - 2 * pad) * (1 - (v - mn) / (mx - mn));
+  let svg = '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="height:' + h + 'px">';
+  if (mn < 0 && mx > 0) svg += '<line x1="0" y1="' + Y(0).toFixed(1) + '" x2="' + w + '" y2="' + Y(0).toFixed(1) + '" stroke="#d8d8de" stroke-width="1"/>';
+  for (const s of seriesList) {
+    let d = '';
+    s.vals.forEach((v, i) => { if (v === null || v === undefined) return; d += (d ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1) + ' '; });
+    svg += '<path d="' + d + '" fill="none" stroke="' + s.color + '" stroke-width="1.6" vector-effect="non-scaling-stroke"/>';
+  }
+  svg += '</svg>';
+  return svg;
+}
+function chartMACD(dif, dea, bar, h) {
+  const w = 720, pad = 6;
+  const all = dif.concat(dea).concat(bar);
+  let mn = Infinity, mx = -Infinity;
+  for (const v of all) { mn = Math.min(mn, v); mx = Math.max(mx, v); }
+  if (mx === mn) { mx += 1; mn -= 1; }
+  const X = i => pad + (w - 2 * pad) * i / (dif.length - 1);
+  const Y = v => pad + (h - 2 * pad) * (1 - (v - mn) / (mx - mn));
+  const bw = Math.max(1, (w - 2 * pad) / dif.length - 0.4);
+  let svg = '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="height:' + h + 'px">';
+  svg += '<line x1="0" y1="' + Y(0).toFixed(1) + '" x2="' + w + '" y2="' + Y(0).toFixed(1) + '" stroke="#d8d8de" stroke-width="1"/>';
+  bar.forEach((v, i) => {
+    const y0 = Y(0), y1 = Y(v);
+    svg += '<rect x="' + (X(i) - bw / 2).toFixed(1) + '" y="' + Math.min(y0, y1).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + Math.max(1, Math.abs(y1 - y0)).toFixed(1) + '" fill="' + (v >= 0 ? '#d43a2f' : '#1a9e57') + '" opacity="0.55"/>';
+  });
+  const line = (vals, color) => {
+    let d = '';
+    vals.forEach((v, i) => { d += (d ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1) + ' '; });
+    return '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="1.6" vector-effect="non-scaling-stroke"/>';
+  };
+  svg += line(dif, '#e8a13a') + line(dea, '#2f6fd0');
+  svg += '</svg>';
+  return svg;
+}
+
+/* ---------------- 详情 ---------------- */
+let detailSecid = null;
+async function openDetail(secid, name) {
+  detailSecid = secid;
+  $('detail').style.display = 'block';
+  $('dTitle').innerHTML = name + '<small>' + secid.split('.')[1] + '</small>';
+  $('dVals').textContent = '正在加载日 K 与指标…';
+  $('chP').innerHTML = ''; $('chM').innerHTML = ''; $('chK').innerHTML = '';
+  $('detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  try {
+    const beg = new Date(Date.now() - 500 * 864e5);
+    const begS = beg.getFullYear() + String(beg.getMonth() + 1).padStart(2, '0') + String(beg.getDate()).padStart(2, '0');
+    const url = 'https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=' + secid +
+      '&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57&klt=101&fqt=1&beg=' + begS + '&end=20500101';
+    const j = await fetchJSON(url, 15000);
+    const kl = (j && j.data && j.data.klines) || [];
+    if (kl.length < 40) { $('dVals').textContent = '历史数据不足，无法计算指标（返回 ' + kl.length + ' 根K线）'; return; }
+    const bars = kl.map(s => { const p = s.split(','); return { d: p[0], o: +p[1], c: +p[2], h: +p[3], l: +p[4] }; });
+    const closes = bars.map(b => b.c);
+    const M = macd(closes), KJ = kdj(bars);
+    const N = 120, sl = a => a.slice(-N);
+    const last = bars.length - 1;
+    $('capP').textContent = '收盘价（前复权）· ' + bars[Math.max(0, last - N + 1)].d + ' ~ ' + bars[last].d;
+    $('chP').innerHTML = chartLines([{ vals: sl(closes), color: '#1c1e21' }], 130);
+    $('chM').innerHTML = chartMACD(sl(M.dif), sl(M.dea), sl(M.bar), 110);
+    $('chK').innerHTML = chartLines([
+      { vals: sl(KJ.K), color: '#e8a13a' }, { vals: sl(KJ.D), color: '#2f6fd0' }, { vals: sl(KJ.J), color: '#b05fd0' }
+    ], 110);
+    const f2 = v => v.toFixed(2);
+    $('rngM').textContent = 'DIF ' + f2(M.dif[last]) + ' · DEA ' + f2(M.dea[last]) + ' · MACD ' + f2(M.bar[last]);
+    $('rngK').textContent = 'K ' + f2(KJ.K[last]) + ' · D ' + f2(KJ.D[last]) + ' · J ' + f2(KJ.J[last]);
+    $('dVals').innerHTML = '最新日：<b>' + bars[last].d + '</b> · 收盘 <b>' + bars[last].c + '</b>' +
+      ' · DIF <b>' + f2(M.dif[last]) + '</b> DEA <b>' + f2(M.dea[last]) + '</b> MACD <b>' + f2(M.bar[last]) + '</b>' +
+      ' · K <b>' + f2(KJ.K[last]) + '</b> D <b>' + f2(KJ.D[last]) + '</b> J <b>' + f2(KJ.J[last]) + '</b>';
+  } catch (e) {
+    $('dVals').textContent = 'K 线加载失败，请稍后重试';
+  }
+}
+$('dClose').addEventListener('click', () => { $('detail').style.display = 'none'; detailSecid = null; });
+
+/* ---------------- 启动与刷新 ---------------- */
+function inTradingHours() {
+  const n = new Date(), day = n.getDay();
+  if (day === 0 || day === 6) return false;
+  const mins = n.getHours() * 60 + n.getMinutes();
+  return mins >= 540 && mins <= 930; // 9:00–15:30
+}
+function setBadge(state, txt) {
+  const b = $('liveBadge');
+  b.className = 'badge ' + state;
+  b.textContent = txt;
+}
+async function refreshAll(first) {
+  try {
+    const [n] = await Promise.all([loadETFs(), loadFlows().catch(() => null)]);
+    setBadge('', '盘中实时');
+    $('subInfo').textContent = '全市场 ' + ETFS.length + ' 只 ETF · 行业资金流同步 · 更新 ' +
+      new Date().toLocaleTimeString('zh-CN', { hour12: false }) + ' · 盘中每 30 秒自动刷新';
+  } catch (e) {
+    setBadge('off', '行情未连接');
+    if (first) $('subInfo').textContent = '实时行情加载失败，30 秒后自动重试；或刷新页面';
+  }
+}
+refreshAll(true);
+setInterval(() => { if (inTradingHours()) refreshAll(false); }, 30000);
+</script>
+</body>
+</html>
