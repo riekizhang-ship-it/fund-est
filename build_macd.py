@@ -60,6 +60,56 @@ def fetch_board_list():
             break
     return out
 
+
+def fetch_etf_candidates():
+    """从天天基金全量代码表筛 ETF 候选（名含 ETF、非联接、非FOF）。"""
+    req = urllib.request.Request('https://fund.eastmoney.com/js/fundcode_search.js', headers=UA)
+    with urllib.request.urlopen(req, timeout=30) as r:
+        text = r.read().decode('utf-8', errors='ignore')
+    m = re.search(r'var r = (\[.*?\]);', text, re.S)
+    arr = json.loads(m.group(1))
+    out = []
+    for x in arr:
+        code, name = x[0], x[2]
+        if 'ETF' in name and '联接' not in name and 'FOF' not in name:
+            out.append((code, name))
+    return out
+
+def ulist_alive(codes):
+    """用 ulist 批量验活：只保留有实时行情返回的代码。"""
+    alive = {}
+    secids = ['%d.%s' % (market_of(c), c) for c in codes]
+    for i in range(0, len(secids), 150):
+        chunk = secids[i:i + 150]
+        try:
+            j = get_quote('/api/qt/ulist.np/get?fltt=2&invt=2&fields=f12,f14&secids=' + ','.join(chunk))
+            for x in ((j.get('data') or {}).get('diff') or []):
+                alive[x['f12']] = x.get('f14')
+        except Exception as e:
+            print('ulist alive chunk failed:', e, flush=True)
+    return alive
+
+def fetch_etf_list_fallback():
+    cand = fetch_etf_candidates()
+    alive = ulist_alive([c for c, _ in cand])
+    name_of = dict(cand)
+    return [(c, alive.get(c) or name_of[c]) for c, _ in cand if c in alive]
+
+def fetch_boards_bruteforce():
+    """兜底：扫 BK 代码段，用 ulist 验活出板块名单（名称+主力净流入齐全才留）。"""
+    secids = ['90.BK%04d' % i for i in range(1, 1401)]
+    out = []
+    for i in range(0, len(secids), 150):
+        chunk = secids[i:i + 150]
+        try:
+            j = get_quote('/api/qt/ulist.np/get?fltt=2&invt=2&fields=f12,f14,f62&secids=' + ','.join(chunk))
+            for x in ((j.get('data') or {}).get('diff') or []):
+                if x.get('f14') and x.get('f62') is not None:
+                    out.append((x['f12'], x['f14']))
+        except Exception as e:
+            print('board sweep chunk failed:', e, flush=True)
+    return out
+
 def market_of(code):
     return 1 if code[0] in '569' else 0
 
@@ -121,15 +171,22 @@ def load_old_ref():
         return [], []
 
 def fetch_etf_list_robust():
-    for attempt in range(6):
+    for attempt in range(3):
         try:
             out = fetch_etf_list()
             if len(out) >= 1000:
                 return out
             print('etf list too short:', len(out), flush=True)
         except Exception as e:
-            print('etf list attempt', attempt, 'failed:', e, flush=True)
-        time.sleep(20)
+            print('etf list (clist) attempt', attempt, 'failed:', e, flush=True)
+        time.sleep(15)
+    try:
+        out = fetch_etf_list_fallback()
+        print('etf list via fundcode_search + ulist alive:', len(out), flush=True)
+        if len(out) >= 1000:
+            return out
+    except Exception as e:
+        print('etf list fallback failed:', e, flush=True)
     return None
 
 def fetch_board_list_robust():
@@ -141,6 +198,13 @@ def fetch_board_list_robust():
         except Exception as e:
             print('board list attempt', attempt, 'failed:', e, flush=True)
         time.sleep(15)
+    try:
+        out = fetch_boards_bruteforce()
+        print('boards via brute-force sweep:', len(out), flush=True)
+        if len(out) >= 100:
+            return out
+    except Exception as e:
+        print('board sweep failed:', e, flush=True)
     return None
 
 def main():
