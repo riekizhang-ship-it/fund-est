@@ -117,13 +117,22 @@ def fetch_closes(secid, fqt):
     beg = time.strftime('%Y%m%d', time.localtime(time.time() - 500 * 86400))
     url = ('https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=%s'
            '&fields1=f1,f2&fields2=f51,f52,f53,f54,f55&klt=101&fqt=%d&beg=%s&end=20500101' % (secid, fqt, beg))
-    j = get_json(url)
-    kl = (j.get('data') or {}).get('klines') or []
-    bars = []
-    for s in kl:
-        p = s.split(',')
-        bars.append((p[0], float(p[2])))
-    return bars
+    last = None
+    for attempt in range(4):
+        try:
+            j = get_json(url)
+            kl = (j.get('data') or {}).get('klines') or []
+            if kl:
+                bars = []
+                for s in kl:
+                    p = s.split(',')
+                    bars.append((p[0], float(p[2])))
+                return bars
+            last = ValueError('empty klines')
+        except Exception as e:
+            last = e
+        time.sleep(1.5 * (attempt + 1))
+    raise last
 
 def ema(vals, n):
     k = 2.0 / (n + 1)
@@ -215,6 +224,12 @@ def main():
         print('no ETF list available (fresh failed and no fallback file) — abort')
         sys.exit(1)
     print('etf list source:', 'fresh' if fresh_etfs else 'fallback', len(etf_list), flush=True)
+    fresh_boards = fetch_board_list_robust()
+    board_list = fresh_boards if fresh_boards else old_boards
+    ref = {'etfs': [[c, n] for c, n in etf_list], 'boards': [[c, n] for c, n in board_list]}
+    with open('etf-boards.json', 'w', encoding='utf-8') as f:
+        json.dump(ref, f, ensure_ascii=False)
+    print('ref lists written: etfs', len(ref['etfs']), 'boards', len(ref['boards']), '(boards source:', 'fresh' if fresh_boards else 'fallback', ')', flush=True)
     items = []
     for code, name in etf_list:
         items.append(('%d.%s' % (market_of(code), code), name, 'ETF', 1))
@@ -226,9 +241,9 @@ def main():
         for r in ex.map(process, items):
             if r:
                 results.append(r)
-    if not results:
-        print('no results at all — aborting without writing output')
-        sys.exit(1)
+    if len(results) < 800:
+        print('too few kline results:', len(results), '— keeping previous macd-cross.json, skip write', flush=True)
+        return
     latest = max(r['last_date'] for r in results)
     golden, death = [], []
     for r in results:
@@ -240,17 +255,11 @@ def main():
         (golden if kind == 'golden' else death).append(entry)
     golden.sort(key=lambda e: -e['pct'])
     death.sort(key=lambda e: e['pct'])
-    out = {'date': latest, 'generated_at': time.strftime('%Y-%m-%d %H:%M:%S'),
+    out = {'date': latest, 'generated_at': time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time.time() + 8 * 3600)),
            'scanned': len(results), 'golden': golden, 'death': death}
     with open('macd-cross.json', 'w', encoding='utf-8') as f:
         json.dump(out, f, ensure_ascii=False)
-    fresh_boards = fetch_board_list_robust()
-    board_list = fresh_boards if fresh_boards else old_boards
-    ref = {'etfs': [[c, n] for c, n in etf_list], 'boards': [[c, n] for c, n in board_list]}
-    with open('etf-boards.json', 'w', encoding='utf-8') as f:
-        json.dump(ref, f, ensure_ascii=False)
     print('date:', latest, '| scanned:', len(results), '| golden:', len(golden), '| death:', len(death))
-    print('ref lists: etfs', len(ref['etfs']), 'boards', len(ref['boards']), '(boards source:', 'fresh' if fresh_boards else 'fallback', ')')
 
 if __name__ == '__main__':
     main()
