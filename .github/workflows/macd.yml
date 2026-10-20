@@ -20,7 +20,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add macd-cross.json
+          git add macd-cross.json etf-boards.json
           if git diff --cached --quiet; then
             echo 'cross list unchanged, skip commit'
           else
