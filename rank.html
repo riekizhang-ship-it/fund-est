@@ -165,19 +165,32 @@ function snapItems() {
 }
 function snapBadge() { return '（快照 · 净值日 <b>' + SNAP.date + '</b>）'; }
 
-function parseRank() {
-  const rd = window.rankData;
-  if (!rd || !rd.datas) { liveFailed(ALL.length > 0, '数据格式异常'); return; }
-  window._rankLive = true;
-  ALL = rd.datas.map(s => {
+function itemsFromRankData(rd) {
+  return (rd.datas || []).map(s => {
     const p = s.split(',');
     return { code: p[0], name: p[1], pin: (p[2] || '').toLowerCase(), date: p[3],
              nav: p[4], pct: p[6] === '' || p[6] === undefined ? null : parseFloat(p[6]) };
   }).filter(x => x.code && x.name);
+}
+function parseRank() {
+  const rd = window.rankData;
+  if (!rd || !rd.datas) { liveFailed(ALL.length > 0, '数据格式异常'); return; }
+  window._rankLive = true;
+  ALL = itemsFromRankData(rd);
   const d0 = ALL.length ? ALL[0].date : '—';
   document.getElementById('hdrSub').innerHTML =
     '全市场 <b>' + ALL.length.toLocaleString() + '</b> 只开放式基金 · 净值日 <b>' + d0 + '</b> · 官方日涨跌';
   applyFilter();
+}
+function renderSnapshot() {
+  const items = itemsFromRankData(window.rankSnapData || {});
+  if (!items.length) return false;
+  ALL = items;
+  const d0 = items[0].date;
+  document.getElementById('hdrSub').innerHTML =
+    '全市场 <b>' + items.length.toLocaleString() + '</b> 只开放式基金 · 净值日 <b>' + d0 + '</b> · 快照（每日晚间更新）';
+  applyFilter();
+  return true;
 }
 function applyFilter() {
   const q = document.getElementById('q').value.trim().toLowerCase();
@@ -370,14 +383,12 @@ document.getElementById('tabRank').onclick = () => showTab(false);
 document.getElementById('tabMine').onclick = () => showTab(true);
 
 (function boot() {
-  const s = snapItems();
-  if (s.length) {
-    ALL = s;
-    document.getElementById('hdrSub').innerHTML =
-      '全市场 <b>' + ALL.length.toLocaleString() + '</b> 只' + snapBadge() + ' · 正在加载实时…';
-    applyFilter();
-  }
-  loadRank();
+  /* 优先加载同域快照（GitHub 定时任务每日晚间更新）；成功后后台再试实时 */
+  const sc = document.createElement('script');
+  sc.src = './rank-snapshot.js?v=' + Date.now();
+  sc.onload = () => { renderSnapshot(); loadRank(); };
+  sc.onerror = () => { loadRank(); };
+  document.body.appendChild(sc);
 })();
 setInterval(() => { if (inTradingHours() && document.getElementById('viewMine').style.display !== 'none') refreshMine(); }, 60000);
 </script>
