@@ -333,7 +333,7 @@ function chartMACD(dif, dea, bar, h) {
 }
 
 /* ---------------- 详情 ---------------- */
-let detailSecid = null, detailName = '', detailKlt = 101;
+let detailSecid = null, detailName = '', detailKlt = 101, detailToken = 0;
 const KLT_CONF = { 101: { days: 500, label: '日线' }, 102: { days: 1700, label: '周线' }, 103: { days: 3300, label: '月线' } };
 function openDetail(secid, name) {
   detailSecid = secid;
@@ -342,8 +342,9 @@ function openDetail(secid, name) {
   $('detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
   loadDetail();
 }
-async function loadDetail() {
-  if (!detailSecid) return;
+async function loadDetail(autoRetry) {
+  if (!detailSecid) return false;
+  const my = ++detailToken;
   const conf = KLT_CONF[detailKlt];
   $('dTitle').innerHTML = detailName + '<small>' + detailSecid.split('.')[1] + ' · ' + conf.label + '</small>';
   $('dVals').textContent = '正在加载' + conf.label + ' K 线与指标…';
@@ -360,7 +361,7 @@ async function loadDetail() {
     }
     if (!j) throw lastErr || new Error('kline failed');
     const kl = (j && j.data && j.data.klines) || [];
-    if (kl.length < 40) { $('dVals').textContent = '历史数据不足，无法计算指标（返回 ' + kl.length + ' 根K线）'; return; }
+    if (kl.length < 40) { $('dVals').textContent = '历史数据不足，无法计算指标（返回 ' + kl.length + ' 根K线）'; return true; }
     const bars = kl.map(s => { const p = s.split(','); return { d: p[0], o: +p[1], c: +p[2], h: +p[3], l: +p[4] }; });
     const closes = bars.map(b => b.c);
     const M = macd(closes), KJ = kdj(bars);
@@ -373,14 +374,24 @@ async function loadDetail() {
     $('chK').innerHTML = chartLines([
       { vals: sl(KJ.K), color: '#e8a13a' }, { vals: sl(KJ.D), color: '#2f6fd0' }, { vals: sl(KJ.J), color: '#b05fd0' }
     ], 110);
-    const f2 = v => v.toFixed(2);
+    const f2 = v => { const s = v.toFixed(2); return s === '-0.00' ? '0.00' : s; };
     $('rngM').textContent = 'DIF ' + f2(M.dif[last]) + ' · DEA ' + f2(M.dea[last]) + ' · MACD ' + f2(M.bar[last]);
     $('rngK').textContent = 'K ' + f2(KJ.K[last]) + ' · D ' + f2(KJ.D[last]) + ' · J ' + f2(KJ.J[last]);
     $('dVals').innerHTML = '最新' + conf.label + '：<b>' + bars[last].d + '</b> · 收盘 <b>' + bars[last].c + '</b>' +
       ' · DIF <b>' + f2(M.dif[last]) + '</b> DEA <b>' + f2(M.dea[last]) + '</b> MACD <b>' + f2(M.bar[last]) + '</b>' +
       ' · K <b>' + f2(KJ.K[last]) + '</b> D <b>' + f2(KJ.D[last]) + '</b> J <b>' + f2(KJ.J[last]) + '</b>';
+    return true;
   } catch (e) {
-    $('dVals').textContent = 'K 线加载失败，请稍后重试';
+    if (!autoRetry) {
+      $('dVals').textContent = 'K 线加载失败，自动重试中…';
+      for (const wait of [6000, 15000]) {
+        await new Promise(rs => setTimeout(rs, wait));
+        if (my !== detailToken || !detailSecid) return false;
+        if (await loadDetail(true)) return true;
+      }
+    }
+    if (my === detailToken) $('dVals').textContent = 'K 线加载失败，请稍后重试';
+    return false;
   }
 }
 function setPeriod(klt, btnId) {
