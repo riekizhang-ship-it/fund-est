@@ -119,7 +119,7 @@ const $ = id => document.getElementById(id);
 const QUOTE_HOSTS = ['push2.eastmoney.com', 'push2delay.eastmoney.com'];
 const FLOW_FS = 'm:90+t:2';
 const ETF_FS = 'b:MK0021,b:MK0022,b:MK0023,b:MK0024';
-let ETFS = [], view = [], shown = 0, flowMode = 'in', flows = { in: [], out: [] };
+let ETFS = [], view = [], shown = 0, flowMode = 'in', flows = { in: [], out: [] }, etfMissing = 0;
 let flowsOk = false, flowsRetry = 0, firstOk = false, healTries = 0;
 const PAGE = 100;
 
@@ -167,10 +167,11 @@ async function ulistBatch(secids, fields) {
     .then(j => (j && j.data && j.data.diff) || [])
     .catch(() => null);
   const results = await Promise.all(chunks.map(fetchChunk));
-  const retryIdx = [];
-  results.forEach((r, i) => { if (r === null) retryIdx.push(i); });
-  if (retryIdx.length) {
-    await new Promise(rs => setTimeout(rs, 1500));
+  for (const wait of [1500, 4000]) {
+    const retryIdx = [];
+    results.forEach((r, i) => { if (r === null) retryIdx.push(i); });
+    if (!retryIdx.length) break;
+    await new Promise(rs => setTimeout(rs, wait));
     for (const i of retryIdx) results[i] = await fetchChunk(chunks[i]);
   }
   if (results.length && results.every(r => r === null)) throw new Error('ulist all failed');
@@ -212,10 +213,13 @@ async function loadETFs() {
   const diff = await ulistBatch(ref.etfs.map(e => marketOf(e[0]) + '.' + e[0]), 'f12,f13,f14,f2,f3');
   const byCode = {};
   diff.forEach(x => { byCode[x.f12] = x; });
+  let quoted = 0;
   ETFS = ref.etfs.map(([code, name]) => {
     const x = byCode[code] || {};
+    if (x.f3 !== null && x.f3 !== undefined) quoted++;
     return { code, name: x.f14 || name, price: x.f2, pct: x.f3 };
   }).sort((a, b) => (b.pct === null || b.pct === undefined ? -Infinity : b.pct) - (a.pct === null || a.pct === undefined ? -Infinity : a.pct));
+  etfMissing = ref.etfs.length - quoted;
   applyFilter();
   return ETFS.length;
 }
@@ -243,7 +247,7 @@ function renderMore() {
   });
   shown = end;
   $('moreWrap').style.display = shown < view.length ? 'flex' : 'none';
-  $('stat').textContent = '已显示 ' + shown + ' / ' + view.length + ' 只' + (ETFS.length !== view.length ? '（全市场共 ' + ETFS.length + ' 只）' : '');
+  $('stat').textContent = '已显示 ' + shown + ' / ' + view.length + ' 只' + (ETFS.length !== view.length ? '（全市场共 ' + ETFS.length + ' 只）' : '') + (etfMissing > 0 ? '（' + etfMissing + ' 只行情缺失，排名不完整，稍后刷新）' : '');
 }
 $('moreBtn').addEventListener('click', renderMore);
 $('q').addEventListener('input', applyFilter);
@@ -408,7 +412,22 @@ async function loadDetail(autoRetry) {
       if (j) { $('dVals').textContent = '历史数据不足，无法计算指标（返回 ' + kl.length + ' 根K线）'; return true; }
       throw lastErr || new Error('kline failed');
     }
-    if (bars.length < 40) { $('dVals').textContent = '历史数据不足，无法计算指标（返回 ' + bars.length + ' 根K线）'; return true; }
+    if (bars.length < 40) {
+      const lastB = bars.length - 1;
+      if (bars.length >= 2) {
+        $('capP').textContent = '收盘价（前复权）· ' + conf.label + ' · ' + bars[0].d + ' ~ ' + bars[lastB].d;
+        $('dNote').textContent = '该标的上市时间短，历史 K 线仅 ' + bars.length + ' 根；MACD/KDJ 需要至少 40 根，暂不可用。' + (srcTHS ? '（本图为同花顺数据）' : '');
+        $('chP').innerHTML = chartLines([{ vals: bars.map(b => b.c), color: '#1c1e21' }], 130);
+        $('chM').innerHTML = '<div class="stat">历史不足，暂不可用</div>';
+        $('chK').innerHTML = '<div class="stat">历史不足，暂不可用</div>';
+        $('rngM').textContent = '历史不足，暂不可用';
+        $('rngK').textContent = '历史不足，暂不可用';
+        $('dVals').innerHTML = '最新' + conf.label + '：<b>' + bars[lastB].d + '</b> · 收盘 <b>' + bars[lastB].c + '</b> · 历史仅 ' + bars.length + ' 根 K 线，MACD/KDJ 暂不可用';
+      } else {
+        $('dVals').textContent = '历史数据不足，无法计算指标（返回 ' + bars.length + ' 根K线）';
+      }
+      return true;
+    }
     const closes = bars.map(b => b.c);
     const M = macd(closes), KJ = kdj(bars);
     const N = 120, sl = a => a.slice(-N);
