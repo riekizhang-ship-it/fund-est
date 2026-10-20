@@ -43,6 +43,23 @@ def fetch_etf_list():
             break
     return out
 
+
+def fetch_board_list():
+    out, pn, total = [], 1, None
+    while total is None or len(out) < total:
+        j = get_quote('/api/qt/clist/get?pn=%d&pz=100&po=1&np=1&fltt=2&invt=2&fid=f3&fs=m:90+t:2&fields=f12,f14' % pn)
+        d = j.get('data') or {}
+        total = d.get('total') or 0
+        diff = d.get('diff') or []
+        if not diff:
+            break
+        for x in diff:
+            out.append((x['f12'], x['f14']))
+        pn += 1
+        if pn > 10:
+            break
+    return out
+
 def market_of(code):
     return 1 if code[0] in '569' else 0
 
@@ -97,7 +114,8 @@ def process(item):
 
 def main():
     items = []
-    for code, name in fetch_etf_list():
+    etf_list = fetch_etf_list()
+    for code, name in etf_list:
         items.append(('%d.%s' % (market_of(code), code), name, 'ETF', 1))
     for secid, name in INDEXES.items():
         items.append((secid, name, '指数', 0))
@@ -125,6 +143,15 @@ def main():
            'scanned': len(results), 'golden': golden, 'death': death}
     with open('macd-cross.json', 'w', encoding='utf-8') as f:
         json.dump(out, f, ensure_ascii=False)
+    try:
+        board_list = fetch_board_list()
+    except Exception as e:
+        board_list = []
+        print('board list fetch failed:', e)
+    ref = {'etfs': [[c, n] for c, n in etf_list], 'boards': [[c, n] for c, n in board_list]}
+    with open('etf-boards.json', 'w', encoding='utf-8') as f:
+        json.dump(ref, f, ensure_ascii=False)
+    print('ref lists: etfs', len(ref['etfs']), 'boards', len(ref['boards']))
     print('date:', latest, '| scanned:', len(results), '| golden:', len(golden), '| death:', len(death))
 
 if __name__ == '__main__':
