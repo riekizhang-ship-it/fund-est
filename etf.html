@@ -149,16 +149,36 @@ const fmtFlow = v => {
   return (v > 0 ? '+' : (v < 0 ? '−' : '')) + s;
 };
 
+/* ---------------- 名单 + ulist 批量行情 ---------------- */
+let REF = null; // { etfs: [[code, name]], boards: [[BK代码, 名称]] }，由每晚自动任务生成
+async function loadRef() {
+  if (REF) return REF;
+  REF = await fetchJSON('./etf-boards.json?t=' + Date.now(), 12000);
+  return REF;
+}
+async function ulistBatch(secids, fields) {
+  const chunks = [];
+  for (let i = 0; i < secids.length; i += 150) chunks.push(secids.slice(i, i + 150));
+  const results = await Promise.all(chunks.map(list =>
+    getJSON('/api/qt/ulist.np/get?fltt=2&invt=2&fields=' + fields + '&secids=' + list.join(','))
+      .then(j => (j && j.data && j.data.diff) || [])
+      .catch(() => null)
+  ));
+  if (results.length && results.every(r => r === null)) throw new Error('ulist all failed');
+  const out = [];
+  for (const r of results) if (r) out.push(...r);
+  return out;
+}
+
 /* ---------------- 行业资金流 ---------------- */
 async function loadFlows() {
-  const base = '/api/qt/clist/get?pz=15&np=1&fltt=2&invt=2&fid=f62&fs=' + FLOW_FS + '&fields=f12,f14,f3,f62,f184';
-  const [jIn, jOut] = await Promise.all([
-    getJSON(base + '&po=1'),
-    getJSON(base + '&po=0').catch(() => null)
-  ]);
-  const map = d => ((d && d.data && d.data.diff) || []).map(x => ({ code: x.f12, name: x.f14, pct: x.f3, flow: x.f62, share: x.f184 }));
-  flows.in = map(jIn);
-  if (jOut) flows.out = map(jOut);
+  const ref = await loadRef();
+  const diff = await ulistBatch(ref.boards.map(b => '90.' + b[0]), 'f12,f13,f14,f3,f62,f184');
+  const rows = diff.map(x => ({ code: x.f12, name: x.f14, pct: x.f3, flow: x.f62, share: x.f184 }))
+    .filter(x => x.flow !== null && x.flow !== undefined);
+  if (!rows.length) throw new Error('no flow rows');
+  flows.in = rows.slice().sort((a, b) => b.flow - a.flow).slice(0, 15);
+  flows.out = rows.slice().sort((a, b) => a.flow - b.flow).slice(0, 15);
   renderFlows();
 }
 function renderFlows() {
@@ -178,20 +198,16 @@ $('tabOut').addEventListener('click', () => { flowMode = 'out'; $('tabOut').clas
 
 /* ---------------- ETF 榜 ---------------- */
 async function loadETFs() {
-  const pz = 100;
-  let pn = 1, all = [], total = Infinity;
-  while (all.length < total && pn <= 25) {
-    const j = await getJSON('/api/qt/clist/get?pn=' + pn + '&pz=' + pz + '&po=1&np=1&fltt=2&invt=2&fid=f3&fs=' + ETF_FS + '&fields=f12,f14,f2,f3,f6');
-    const d = j && j.data;
-    if (!d || !d.diff) break;
-    total = d.total;
-    for (const x of d.diff) all.push({ code: x.f12, name: x.f14, price: x.f2, pct: x.f3, amt: x.f6 });
-    if (!d.diff.length) break;
-    pn++;
-  }
-  ETFS = all;
+  const ref = await loadRef();
+  const diff = await ulistBatch(ref.etfs.map(e => marketOf(e[0]) + '.' + e[0]), 'f12,f13,f14,f2,f3');
+  const byCode = {};
+  diff.forEach(x => { byCode[x.f12] = x; });
+  ETFS = ref.etfs.map(([code, name]) => {
+    const x = byCode[code] || {};
+    return { code, name: x.f14 || name, price: x.f2, pct: x.f3 };
+  }).sort((a, b) => (b.pct === null || b.pct === undefined ? -Infinity : b.pct) - (a.pct === null || a.pct === undefined ? -Infinity : a.pct));
   applyFilter();
-  return all.length;
+  return ETFS.length;
 }
 function applyFilter() {
   const q = $('q').value.trim().toLowerCase();
