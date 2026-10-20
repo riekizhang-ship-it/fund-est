@@ -1,0 +1,39 @@
+name: 每日榜单快照
+
+on:
+  schedule:
+    - cron: '30 14 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  snap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch rank data and build snapshot
+        run: |
+          curl -s --max-time 120 -A 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15' -e 'https://fund.eastmoney.com/data/' 'https://fund.eastmoney.com/data/rankhandler.aspx?op=ph&dt=kf&ft=all&sc=rzdf&st=desc&pn=25000' -o rank_raw.js
+          grep -q 'var rankData' rank_raw.js || { echo 'unexpected response format'; exit 1; }
+          python3 - << 'PYEOF'
+          import re
+          s = open('rank_raw.js', encoding='utf-8', errors='ignore').read()
+          m = re.search(r'allRecords:(\d+)', s)
+          assert m and int(m.group(1)) >= 20000, 'too few records: %s' % (m.group(1) if m else 'none')
+          s = s.replace('var rankData', 'window.rankSnapData', 1)
+          open('rank-snapshot.js', 'w', encoding='utf-8').write(s)
+          print('snapshot records:', m.group(1))
+          PYEOF
+      - name: Commit snapshot if changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add rank-snapshot.js
+          if git diff --cached --quiet; then
+            echo 'snapshot unchanged, skip commit'
+          else
+            git commit -m '每日榜单快照更新'
+            git push
+          fi
