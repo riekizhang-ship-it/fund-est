@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>即将MACD金叉榜 · 板块+ETF</title>
+<style>
+  :root { --up:#d43a2f; --down:#1a9e57; --ink:#1c1e21; --sub:#8a8f98; --line:#ececf0; --bg:#f6f6f8; --card:#fff; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--ink); }
+  .wrap { max-width:860px; margin:0 auto; padding:14px 12px 40px; }
+  header { padding:6px 2px 10px; }
+  h1 { font-size:20px; margin:0 0 4px; display:inline-block; }
+  .badge { display:inline-block; vertical-align:2px; margin-left:8px; font-size:11px; padding:2px 8px; border-radius:99px; background:#e8f6ee; color:var(--down); }
+  .badge.load { background:#eef1f5; color:var(--sub); }
+  .nav { font-size:13px; margin-top:6px; }
+  .nav a { color:#2f6fd0; text-decoration:none; margin-right:14px; }
+  .sub { color:var(--sub); font-size:12.5px; margin-top:6px; line-height:1.55; }
+  .card { background:var(--card); border-radius:14px; padding:12px 12px 6px; margin-top:12px; box-shadow:0 1px 3px rgba(20,20,40,.05); }
+  .card h2 { font-size:15.5px; margin:2px 0 4px; }
+  .card .hint { font-size:12px; color:var(--sub); margin-bottom:6px; line-height:1.6; }
+  .tabs { display:flex; gap:8px; margin:8px 0 4px; flex-wrap:wrap; }
+  .tabs button { border:1px solid var(--line); background:#fff; border-radius:99px; padding:5px 14px; font-size:13px; color:var(--ink); }
+  .tabs button.on { background:#1c1e21; color:#fff; border-color:#1c1e21; }
+  .nrow { display:flex; justify-content:space-between; align-items:center; padding:10px 2px; border-top:1px solid var(--line); }
+  .nrow:first-of-type { border-top:none; }
+  .nrow .nm { font-size:14.5px; }
+  .nrow .nm small { color:var(--sub); font-size:11.5px; margin-left:6px; }
+  .nrow .meta { color:var(--sub); font-size:12px; margin-top:2px; font-variant-numeric:tabular-nums; }
+  .nrow .rt { text-align:right; }
+  .nrow .pct { font-size:16px; font-weight:600; }
+  .nrow .gap { font-size:12px; color:#b97d1e; margin-top:1px; font-variant-numeric:tabular-nums; }
+  .tag { display:inline-block; font-size:10.5px; padding:1px 6px; border-radius:99px; background:#eef1f5; color:var(--sub); margin-left:6px; vertical-align:1px; }
+  .up { color:var(--up); } .down { color:var(--down); }
+  .stat { text-align:center; color:var(--sub); font-size:12px; padding:10px 0 6px; }
+  .foot { color:var(--sub); font-size:12px; line-height:1.7; margin-top:16px; padding:0 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>即将MACD金叉榜</h1><span class="badge load" id="dateBadge">加载中…</span>
+    <div class="nav"><a href="./index.html">指数基金实时估算榜</a><a href="./rank.html">全市场涨跌榜+自选</a><a href="./etf.html">ETF实时榜·资金流</a></div>
+    <div class="sub" id="subInfo">正在加载名单…</div>
+  </header>
+
+  <section class="card">
+    <h2>马上要金叉（日线 MACD）</h2>
+    <div class="hint">口径：DIF 还在 DEA 下方（尚未金叉），两线差距比昨日收窄，且差距不超过收盘价的 0.5%。按差距从小到大排，越靠前离金叉越近。「约 N 天」是按昨天到今天的收窄速度粗估，仅供参考。名单每个工作日 16:05 收盘后自动更新。</div>
+    <div class="tabs">
+      <button id="tabAll" class="on">全部</button>
+      <button id="tabBoard">板块</button>
+      <button id="tabEtf">ETF</button>
+      <button id="tabIdx">指数</button>
+    </div>
+    <div id="nearList"><div class="stat">加载中…</div></div>
+    <div class="stat" id="nearStat"></div>
+  </section>
+
+  <div class="foot">
+    数据：东方财富日 K 线（ETF 前复权，板块/指数不复权），MACD(12,26,9)。今日已金叉/死叉的名单在 <a href="./etf.html" style="color:#2f6fd0;text-decoration:none">ETF实时榜</a> 页面的「MACD 金叉 / 死叉」卡里。本榜只列技术形态接近金叉的标的，不构成买卖建议。
+  </div>
+</div>
+<script>
+var KIND_LABEL = {'板块': '板块', 'ETF': 'ETF', '指数': '指数'};
+var curFilter = '全部';
+var nearData = [];
+var $ = function(id) { return document.getElementById(id); };
+function fmt(v, d) { return (v === null || v === undefined || isNaN(v)) ? '—' : Number(v).toFixed(d); }
+function esc(s) { return String(s).replace(/[&<>"']/g, function(c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function pctHtml(p) {
+  if (p === null || p === undefined || isNaN(p)) return '<span class="pct">—</span>';
+  var cls = p > 0 ? 'up' : (p < 0 ? 'down' : '');
+  return '<span class="pct ' + cls + '">' + (p > 0 ? '+' : '') + fmt(p, 2) + '%</span>';
+}
+function render() {
+  var rows = nearData.filter(function(e) { return curFilter === '全部' || e.kind === curFilter; });
+  if (!rows.length) {
+    $('nearList').innerHTML = '<div class="stat">该分类今日暂无即将金叉的标的</div>';
+  } else {
+    $('nearList').innerHTML = rows.map(function(e) {
+      var days = (e.days === null || e.days === undefined) ? '—' : ('约 ' + e.days + ' 天');
+      return '<div class="nrow"><div><div class="nm">' + esc(e.name) + '<span class="tag">' + esc(KIND_LABEL[e.kind] || e.kind) + '</span><small>' + esc(e.code) + '</small></div>' +
+        '<div class="meta">DIF ' + fmt(e.dif, 3) + ' · DEA ' + fmt(e.dea, 3) + ' · 按当前速度 ' + days + '</div></div>' +
+        '<div class="rt">' + pctHtml(e.pct) + '<div class="gap">距金叉 ' + fmt(e.gap_pct, 3) + '%</div></div></div>';
+    }).join('');
+  }
+  $('nearStat').textContent = '共 ' + rows.length + ' 个标的（板块 ' + nearData.filter(function(e){return e.kind==='板块';}).length +
+    ' · ETF ' + nearData.filter(function(e){return e.kind==='ETF';}).length +
+    ' · 指数 ' + nearData.filter(function(e){return e.kind==='指数';}).length + '）';
+}
+function setTab(kind, btn) {
+  curFilter = kind;
+  ['tabAll','tabBoard','tabEtf','tabIdx'].forEach(function(id) { $(id).classList.remove('on'); });
+  btn.classList.add('on');
+  render();
+}
+$('tabAll').onclick = function() { setTab('全部', this); };
+$('tabBoard').onclick = function() { setTab('板块', this); };
+$('tabEtf').onclick = function() { setTab('ETF', this); };
+$('tabIdx').onclick = function() { setTab('指数', this); };
+fetch('./macd-cross.json?t=' + Date.now()).then(function(r) { return r.json(); }).then(function(j) {
+  nearData = j.near || [];
+  $('dateBadge').textContent = '名单日期 ' + (j.date || '—');
+  $('dateBadge').classList.remove('load');
+  $('subInfo').textContent = '名单日期 ' + (j.date || '—') + ' · 扫描 ' + (j.scanned || 0) + ' 个标的（ETF+板块+指数）· 生成于 ' + (j.generated_at || '—') + ' · 工作日 16:05 自动更新';
+  render();
+}).catch(function() {
+  $('subInfo').textContent = '名单加载失败，请稍后刷新重试。';
+  $('nearList').innerHTML = '<div class="stat">加载失败</div>';
+});
+</script>
+</body>
+</html>
