@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""每晚计算全市场 ETF + 主要指数的日线 MACD 金叉/死叉名单，输出 macd-cross.json。
+"""每晚计算全市场 ETF + 板块 + 主要指数的日线 MACD 金叉/死叉/即将金叉名单，输出 macd-cross.json。
 在 GitHub Actions 中运行（macd.yml，工作日 16:05 北京时间）。
-口径：MACD(12,26,9)，前复权日 K；金叉 = 昨日 DIF<=DEA 且今日 DIF>DEA（死叉相反）。
+口径：MACD(12,26,9)，ETF 前复权日 K、板块/指数不复权；金叉 = 昨日 DIF<=DEA 且今日 DIF>DEA（死叉相反）。
+即将金叉 = 尚未金叉（DIF<DEA）、快慢线差距较昨日收窄、且差距 ≤ 收盘价的 0.5%。
 只统计最后一根 K 线日期 == 全局最新交易日的标的（排除停牌/未更新）。
 """
-import json, re, sys, time, urllib.request
+import json, math, re, sys, time, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
 UA = {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15',
@@ -13,7 +14,7 @@ INDEXES = {"1.000300": "沪深300", "1.000905": "中证500", "1.000852": "中证
 ETF_FS = 'b:MK0021,b:MK0022,b:MK0023,b:MK0024'
 QUOTE_HOSTS = ['push2.eastmoney.com', 'push2delay.eastmoney.com']
 
-def get_json(url, timeout=15):
+def get_json(url, timeout=10):
     req = urllib.request.Request(url, headers=UA)
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode('utf-8'))
@@ -113,7 +114,7 @@ def fetch_boards_bruteforce():
 def market_of(code):
     return 1 if code[0] in '569' else 0
 
-def get_text(url, timeout=15):
+def get_text(url, timeout=10):
     req = urllib.request.Request(url, headers={'User-Agent': UA['User-Agent'],
                                                 'Referer': 'https://www.10jqka.com.cn/'})
     with urllib.request.urlopen(req, timeout=timeout) as r:
@@ -147,7 +148,7 @@ def fetch_closes(secid, fqt):
     url = ('https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=%s'
            '&fields1=f1,f2&fields2=f51,f52,f53,f54,f55&klt=101&fqt=%d&beg=%s&end=20500101' % (secid, fqt, beg))
     last = None
-    for attempt in range(4):
+    for attempt in range(2):
         try:
             j = get_json(url)
             kl = (j.get('data') or {}).get('klines') or []
@@ -160,7 +161,7 @@ def fetch_closes(secid, fqt):
             last = ValueError('empty klines')
         except Exception as e:
             last = e
-        time.sleep(1.5 * (attempt + 1))
+        time.sleep(1.0 * (attempt + 1))
     raise last
 
 def ema(vals, n):
@@ -171,20 +172,32 @@ def ema(vals, n):
         out.append(prev)
     return out
 
-def macd_cross(closes):
+NEAR_GAP_PCT_MAX = 0.5  # 即将金叉门槛：(DEA-DIF) 占收盘价的百分比上限
+
+def analyze(closes):
+    """返回 (cross, near)：cross = (kind, dif, dea, pct) 或 None；
+    near = (dif, dea, pct, gap_pct, days_est) 或 None。"""
     if len(closes) < 40:
-        return None
+        return None, None
     e12, e26 = ema(closes, 12), ema(closes, 26)
     dif = [a - b for a, b in zip(e12, e26)]
     dea = ema(dif, 9)
-    if dif[-2] <= dea[-2] and dif[-1] > dea[-1]:
-        kind = 'golden'
-    elif dif[-2] >= dea[-2] and dif[-1] < dea[-1]:
-        kind = 'death'
-    else:
-        return None
     pct = (closes[-1] / closes[-2] - 1) * 100 if closes[-2] else 0.0
-    return kind, round(dif[-1], 4), round(dea[-1], 4), round(pct, 2)
+    pct = round(pct, 2)
+    if dif[-2] <= dea[-2] and dif[-1] > dea[-1]:
+        return ('golden', round(dif[-1], 4), round(dea[-1], 4), pct), None
+    if dif[-2] >= dea[-2] and dif[-1] < dea[-1]:
+        return ('death', round(dif[-1], 4), round(dea[-1], 4), pct), None
+    near = None
+    if dif[-1] < dea[-1] and closes[-1]:
+        gap = dea[-1] - dif[-1]
+        gap_prev = dea[-2] - dif[-2]
+        gap_pct = gap / closes[-1] * 100
+        if gap < gap_prev and gap_pct <= NEAR_GAP_PCT_MAX:
+            shrink = gap_prev - gap
+            days = min(30, max(1, math.ceil(gap / shrink))) if shrink > 0 else None
+            near = (round(dif[-1], 4), round(dea[-1], 4), pct, round(gap_pct, 3), days)
+    return None, near
 
 def process(item):
     secid, name, kind_label, fqt = item
@@ -202,10 +215,10 @@ def process(item):
     if not bars or len(bars) < 40:
         return None
     closes = [c for _, c in bars]
-    r = macd_cross(closes)
+    cross, near = analyze(closes)
     code = secid.split('.', 1)[1] if '.' in secid else secid
     return {'secid': secid, 'code': code, 'name': name, 'kind': kind_label,
-            'last_date': bars[-1][0], 'cross': r}
+            'last_date': bars[-1][0], 'cross': cross, 'near': near}
 
 def load_old_ref():
     try:
@@ -269,11 +282,13 @@ def main():
     items = []
     for code, name in etf_list:
         items.append(('%d.%s' % (market_of(code), code), name, 'ETF', 1))
+    for code, name in board_list:
+        items.append(('90.%s' % code, name, '板块', 0))
     for secid, name in INDEXES.items():
         items.append((secid, name, '指数', 0))
     print('targets:', len(items), flush=True)
     results = []
-    with ThreadPoolExecutor(max_workers=8) as ex:
+    with ThreadPoolExecutor(max_workers=16) as ex:
         for r in ex.map(process, items):
             if r:
                 results.append(r)
@@ -281,21 +296,27 @@ def main():
         print('too few kline results:', len(results), '— keeping previous macd-cross.json, skip write', flush=True)
         return
     latest = max(r['last_date'] for r in results)
-    golden, death = [], []
+    golden, death, near = [], [], []
     for r in results:
-        if r['last_date'] != latest or not r['cross']:
+        if r['last_date'] != latest:
             continue
-        kind, dif, dea, pct = r['cross']
-        entry = {'secid': r['secid'], 'code': r['code'], 'name': r['name'], 'kind': r['kind'],
-                 'pct': pct, 'dif': dif, 'dea': dea}
-        (golden if kind == 'golden' else death).append(entry)
+        if r['cross']:
+            kind, dif, dea, pct = r['cross']
+            entry = {'secid': r['secid'], 'code': r['code'], 'name': r['name'], 'kind': r['kind'],
+                     'pct': pct, 'dif': dif, 'dea': dea}
+            (golden if kind == 'golden' else death).append(entry)
+        elif r['near']:
+            dif, dea, pct, gap_pct, days = r['near']
+            near.append({'secid': r['secid'], 'code': r['code'], 'name': r['name'], 'kind': r['kind'],
+                         'pct': pct, 'dif': dif, 'dea': dea, 'gap_pct': gap_pct, 'days': days})
     golden.sort(key=lambda e: -e['pct'])
     death.sort(key=lambda e: e['pct'])
+    near.sort(key=lambda e: e['gap_pct'])
     out = {'date': latest, 'generated_at': time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time.time() + 8 * 3600)),
-           'scanned': len(results), 'golden': golden, 'death': death}
+           'scanned': len(results), 'golden': golden, 'death': death, 'near': near}
     with open('macd-cross.json', 'w', encoding='utf-8') as f:
         json.dump(out, f, ensure_ascii=False)
-    print('date:', latest, '| scanned:', len(results), '| golden:', len(golden), '| death:', len(death))
+    print('date:', latest, '| scanned:', len(results), '| golden:', len(golden), '| death:', len(death), '| near:', len(near))
 
 if __name__ == '__main__':
     main()
