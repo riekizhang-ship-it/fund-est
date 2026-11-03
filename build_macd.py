@@ -46,19 +46,25 @@ def fetch_etf_list():
 
 
 def fetch_board_list():
-    out, pn, total = [], 1, None
-    while total is None or len(out) < total:
-        j = get_quote('/api/qt/clist/get?pn=%d&pz=100&po=1&np=1&fltt=2&invt=2&fid=f3&fs=m:90+t:2&fields=f12,f14' % pn)
-        d = j.get('data') or {}
-        total = d.get('total') or 0
-        diff = d.get('diff') or []
-        if not diff:
-            break
-        for x in diff:
-            out.append((x['f12'], x['f14']))
-        pn += 1
-        if pn > 10:
-            break
+    """全量板块：地域(t:1) + 行业(t:2) + 概念(t:3) 三类合并去重。"""
+    out, seen = [], set()
+    for t in (1, 2, 3):
+        pn, total, got = 1, None, 0
+        while total is None or got < total:
+            j = get_quote('/api/qt/clist/get?pn=%d&pz=100&po=1&np=1&fltt=2&invt=2&fid=f3&fs=m:90+t:%d&fields=f12,f14' % (pn, t))
+            d = j.get('data') or {}
+            total = d.get('total') or 0
+            diff = d.get('diff') or []
+            if not diff:
+                break
+            got += len(diff)
+            for x in diff:
+                if x['f12'] not in seen:
+                    seen.add(x['f12'])
+                    out.append((x['f12'], x['f14']))
+            pn += 1
+            if pn > 15:
+                break
     return out
 
 
@@ -98,7 +104,7 @@ def fetch_etf_list_fallback():
 
 def fetch_boards_bruteforce():
     """兜底：扫 BK 代码段，用 ulist 验活出板块名单（名称+主力净流入齐全才留）。"""
-    secids = ['90.BK%04d' % i for i in range(1, 1401)]
+    secids = ['90.BK%04d' % i for i in range(1, 2001)]
     out = []
     for i in range(0, len(secids), 150):
         chunk = secids[i:i + 150]
