@@ -179,6 +179,15 @@ def ema(vals, n):
     return out
 
 NEAR_GAP_PCT_MAX = 0.5  # 即将金叉门槛：(DEA-DIF) 占收盘价的百分比上限
+MONEY_NAME_RE = re.compile(r'货币|现金|添益|添利|快线|日利|活期|保证金|收益宝')
+
+def is_flat(closes, n=20):
+    """近 n 日平均单日涨跌幅 <0.02% 视为价格冻结（货币类），MACD 对其无意义。"""
+    if len(closes) < n + 1:
+        return False
+    seg = closes[-(n + 1):]
+    moves = [abs(seg[i] / seg[i - 1] - 1) for i in range(1, len(seg)) if seg[i - 1]]
+    return bool(moves) and sum(moves) / len(moves) < 0.0002
 
 def analyze(closes):
     """返回 (cross, near)：cross = (kind, dif, dea, pct) 或 None；
@@ -221,6 +230,8 @@ def process(item):
     if not bars or len(bars) < 40:
         return None
     closes = [c for _, c in bars]
+    if kind_label == 'ETF' and (MONEY_NAME_RE.search(name) or is_flat(closes)):
+        return {'skip': True}
     cross, near = analyze(closes)
     code = secid.split('.', 1)[1] if '.' in secid else secid
     return {'secid': secid, 'code': code, 'name': name, 'kind': kind_label,
@@ -296,15 +307,15 @@ def main():
     results, failed = [], []
     with ThreadPoolExecutor(max_workers=16) as ex:
         for item, r in zip(items, ex.map(process, items)):
-            if r:
+            if r and not r.get('skip'):
                 results.append(r)
-            else:
+            elif not r:
                 failed.append(item)
     print('first pass ok:', len(results), '| failed:', len(failed), flush=True)
     if failed:
         with ThreadPoolExecutor(max_workers=6) as ex:
             for r in ex.map(process, failed):
-                if r:
+                if r and not r.get('skip'):
                     results.append(r)
         print('after retry pass:', len(results), flush=True)
     print('results by kind:', dict(collections.Counter(r['kind'] for r in results)), flush=True)
