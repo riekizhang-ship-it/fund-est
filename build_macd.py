@@ -5,7 +5,7 @@
 即将金叉 = 尚未金叉（DIF<DEA）、快慢线差距较昨日收窄、且差距 ≤ 收盘价的 0.5%。
 只统计最后一根 K 线日期 == 全局最新交易日的标的（排除停牌/未更新）。
 """
-import json, math, re, sys, time, urllib.request
+import collections, json, math, re, sys, time, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
 UA = {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15',
@@ -287,11 +287,21 @@ def main():
     for secid, name in INDEXES.items():
         items.append((secid, name, '指数', 0))
     print('targets:', len(items), flush=True)
-    results = []
+    results, failed = [], []
     with ThreadPoolExecutor(max_workers=16) as ex:
-        for r in ex.map(process, items):
+        for item, r in zip(items, ex.map(process, items)):
             if r:
                 results.append(r)
+            else:
+                failed.append(item)
+    print('first pass ok:', len(results), '| failed:', len(failed), flush=True)
+    if failed:
+        with ThreadPoolExecutor(max_workers=6) as ex:
+            for r in ex.map(process, failed):
+                if r:
+                    results.append(r)
+        print('after retry pass:', len(results), flush=True)
+    print('results by kind:', dict(collections.Counter(r['kind'] for r in results)), flush=True)
     if len(results) < 800:
         print('too few kline results:', len(results), '— keeping previous macd-cross.json, skip write', flush=True)
         return
