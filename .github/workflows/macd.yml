@@ -11,7 +11,7 @@ permissions:
 jobs:
   macd:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 300
     steps:
       - uses: actions/checkout@v4
       - name: Compute MACD golden/death cross list
@@ -25,5 +25,5 @@ jobs:
             echo 'cross list unchanged, skip commit'
           else
             git commit -m '每日MACD金叉名单更新'
-            git push
+            git push || (git pull --rebase origin main && git push)
           fi
