@@ -46,7 +46,7 @@
 
   <section class="card">
     <h2>马上要金叉（日线 MACD）</h2>
-    <div class="hint">口径：DIF 还在 DEA 下方（尚未金叉），两线差距比昨日收窄，且差距不超过收盘价的 0.5%。按差距从小到大排，越靠前离金叉越近。「约 N 天」是按昨天到今天的收窄速度粗估，仅供参考。名单每个工作日 16:05 收盘后自动更新。</div>
+    <div class="hint">口径：DIF 还在 DEA 下方（尚未金叉），两线差距比昨日收窄，且差距不超过收盘价的 0.5%。按差距从小到大排，越靠前离金叉越近。「约 N 天」是按昨天到今天的收窄速度粗估，仅供参考。</div>
     <div class="tabs">
       <button id="tabAll" class="on">全部</button>
       <button id="tabBoard">板块</button>
@@ -57,14 +57,62 @@
     <div class="stat" id="nearStat"></div>
   </section>
 
+  <section class="card">
+    <h2>MACD 金叉</h2>
+    <div class="hint">DIF 上穿 DEA 的那个周期刚发生。周线/月线按最近一根 K 线计算：当周/当月还没走完，信号会变，周五/月末收盘后才定格。</div>
+    <div class="tabs" data-card="macdGold">
+      <button data-p="day" class="on">日线</button>
+      <button data-p="week">周线</button>
+      <button data-p="month">月线</button>
+    </div>
+    <div id="macdGoldList"><div class="stat">加载中…</div></div>
+    <div class="stat" id="macdGoldStat"></div>
+  </section>
+
+  <section class="card">
+    <h2>MACD 死叉</h2>
+    <div class="hint">DIF 下穿 DEA 的那个周期刚发生。周线/月线同样以最近一根 K 线计算，未定格前会变。</div>
+    <div class="tabs" data-card="macdDead">
+      <button data-p="day" class="on">日线</button>
+      <button data-p="week">周线</button>
+      <button data-p="month">月线</button>
+    </div>
+    <div id="macdDeadList"><div class="stat">加载中…</div></div>
+    <div class="stat" id="macdDeadStat"></div>
+  </section>
+
+  <section class="card">
+    <h2>KDJ 金叉</h2>
+    <div class="hint">KDJ(9,3,3)：K 线上穿 D 线的那个周期刚发生。</div>
+    <div class="tabs" data-card="kdjGold">
+      <button data-p="day" class="on">日线</button>
+      <button data-p="week">周线</button>
+      <button data-p="month">月线</button>
+    </div>
+    <div id="kdjGoldList"><div class="stat">加载中…</div></div>
+    <div class="stat" id="kdjGoldStat"></div>
+  </section>
+
+  <section class="card">
+    <h2>KDJ 死叉</h2>
+    <div class="hint">KDJ(9,3,3)：K 线下穿 D 线的那个周期刚发生。</div>
+    <div class="tabs" data-card="kdjDead">
+      <button data-p="day" class="on">日线</button>
+      <button data-p="week">周线</button>
+      <button data-p="month">月线</button>
+    </div>
+    <div id="kdjDeadList"><div class="stat">加载中…</div></div>
+    <div class="stat" id="kdjDeadStat"></div>
+  </section>
+
   <div class="foot">
-    数据：东方财富日 K 线（ETF 前复权，板块/指数不复权），MACD(12,26,9)。今日已金叉/死叉的名单在 <a href="./etf.html" style="color:#2f6fd0;text-decoration:none">ETF实时榜</a> 页面的「MACD 金叉 / 死叉」卡里。本榜只列技术形态接近金叉的标的，不构成买卖建议。
+    数据：东方财富 K 线（ETF 前复权，板块/指数不复权），MACD(12,26,9)、KDJ(9,3,3)。全市场 ETF + 板块（地域/行业/概念）+ 主要指数扫描；货币类 ETF 不参与计算。名单每个工作日 16:05 收盘后自动更新。今日已金叉/死叉也可以在 <a href="./etf.html" style="color:#2f6fd0;text-decoration:none">ETF实时榜</a> 页面看日线版。本页只列技术形态，不构成买卖建议。
   </div>
 </div>
 <script>
 var KIND_LABEL = {'板块': '板块', 'ETF': 'ETF', '指数': '指数'};
 var curFilter = '全部';
-var nearData = [];
+var DATA = null;
 var $ = function(id) { return document.getElementById(id); };
 function fmt(v, d) { return (v === null || v === undefined || isNaN(v)) ? '—' : Number(v).toFixed(d); }
 function esc(s) { return String(s).replace(/[&<>"']/g, function(c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
@@ -73,38 +121,94 @@ function pctHtml(p) {
   var cls = p > 0 ? 'up' : (p < 0 ? 'down' : '');
   return '<span class="pct ' + cls + '">' + (p > 0 ? '+' : '') + fmt(p, 2) + '%</span>';
 }
-function render() {
+function kindTag(e) { return '<span class="tag">' + esc(KIND_LABEL[e.kind] || e.kind) + '</span>'; }
+function countByKind(rows) {
+  return '板块 ' + rows.filter(function(e){return e.kind==='板块';}).length +
+    ' · ETF ' + rows.filter(function(e){return e.kind==='ETF';}).length +
+    ' · 指数 ' + rows.filter(function(e){return e.kind==='指数';}).length;
+}
+function renderNear() {
+  var nearData = (DATA && DATA.near) || [];
   var rows = nearData.filter(function(e) { return curFilter === '全部' || e.kind === curFilter; });
   if (!rows.length) {
     $('nearList').innerHTML = '<div class="stat">该分类今日暂无即将金叉的标的</div>';
   } else {
     $('nearList').innerHTML = rows.map(function(e) {
       var days = (e.days === null || e.days === undefined) ? '—' : ('约 ' + e.days + ' 天');
-      return '<div class="nrow"><div><div class="nm">' + esc(e.name) + '<span class="tag">' + esc(KIND_LABEL[e.kind] || e.kind) + '</span><small>' + esc(e.code) + '</small></div>' +
+      return '<div class="nrow"><div><div class="nm">' + esc(e.name) + kindTag(e) + '<small>' + esc(e.code) + '</small></div>' +
         '<div class="meta">DIF ' + fmt(e.dif, 3) + ' · DEA ' + fmt(e.dea, 3) + ' · 按当前速度 ' + days + '</div></div>' +
         '<div class="rt">' + pctHtml(e.pct) + '<div class="gap">距金叉 ' + fmt(e.gap_pct, 3) + '%</div></div></div>';
     }).join('');
   }
-  $('nearStat').textContent = '共 ' + rows.length + ' 个标的（板块 ' + nearData.filter(function(e){return e.kind==='板块';}).length +
-    ' · ETF ' + nearData.filter(function(e){return e.kind==='ETF';}).length +
-    ' · 指数 ' + nearData.filter(function(e){return e.kind==='指数';}).length + '）';
+  $('nearStat').textContent = '共 ' + rows.length + ' 个标的（' + countByKind(nearData) + '）';
 }
 function setTab(kind, btn) {
   curFilter = kind;
   ['tabAll','tabBoard','tabEtf','tabIdx'].forEach(function(id) { $(id).classList.remove('on'); });
   btn.classList.add('on');
-  render();
+  renderNear();
 }
 $('tabAll').onclick = function() { setTab('全部', this); };
 $('tabBoard').onclick = function() { setTab('板块', this); };
 $('tabEtf').onclick = function() { setTab('ETF', this); };
 $('tabIdx').onclick = function() { setTab('指数', this); };
+
+function periodRows(card, p) {
+  if (!DATA) return null;
+  var per = (DATA.periods || {});
+  if (card === 'macdGold') return p === 'day' ? (DATA.golden || []) : ((per[p] || {}).macd_golden || []);
+  if (card === 'macdDead') return p === 'day' ? (DATA.death || []) : ((per[p] || {}).macd_death || []);
+  if (card === 'kdjGold') return p === 'day' ? (DATA.kdj_golden || []) : ((per[p] || {}).kdj_golden || []);
+  if (card === 'kdjDead') return p === 'day' ? (DATA.kdj_death || []) : ((per[p] || {}).kdj_death || []);
+  return [];
+}
+function renderCross(card) {
+  var state = crossState[card];
+  var rows = periodRows(card, state.p);
+  var listEl = $(card + 'List'), statEl = $(card + 'Stat');
+  if (rows === null) { listEl.innerHTML = '<div class="stat">加载中…</div>'; return; }
+  if (!rows.length) {
+    listEl.innerHTML = '<div class="stat">该周期暂无名单（或今晚更新后生成）</div>';
+    statEl.textContent = '';
+    return;
+  }
+  var isKdj = card.indexOf('kdj') === 0;
+  listEl.innerHTML = rows.map(function(e) {
+    var meta = isKdj
+      ? ('K ' + fmt(e.k, 1) + ' · D ' + fmt(e.d, 1) + ' · J ' + fmt(e.j, 1))
+      : ('DIF ' + fmt(e.dif, 3) + ' · DEA ' + fmt(e.dea, 3));
+    return '<div class="nrow"><div><div class="nm">' + esc(e.name) + kindTag(e) + '<small>' + esc(e.code) + '</small></div>' +
+      '<div class="meta">' + meta + '</div></div>' +
+      '<div class="rt">' + pctHtml(e.pct) + '</div></div>';
+  }).join('');
+  statEl.textContent = '共 ' + rows.length + ' 个标的（' + countByKind(rows) + '）';
+}
+var crossState = { macdGold: {p: 'day'}, macdDead: {p: 'day'}, kdjGold: {p: 'day'}, kdjDead: {p: 'day'} };
+Array.prototype.forEach.call(document.querySelectorAll('.tabs[data-card]'), function(tabsEl) {
+  var card = tabsEl.getAttribute('data-card');
+  Array.prototype.forEach.call(tabsEl.querySelectorAll('button'), function(btn) {
+    btn.onclick = function() {
+      crossState[card].p = btn.getAttribute('data-p');
+      Array.prototype.forEach.call(tabsEl.querySelectorAll('button'), function(b) { b.classList.remove('on'); });
+      btn.classList.add('on');
+      renderCross(card);
+    };
+  });
+});
+function renderAll() {
+  renderNear();
+  ['macdGold','macdDead','kdjGold','kdjDead'].forEach(renderCross);
+}
 fetch('./macd-cross.json?t=' + Date.now()).then(function(r) { return r.json(); }).then(function(j) {
-  nearData = j.near || [];
+  DATA = j;
   $('dateBadge').textContent = '名单日期 ' + (j.date || '—');
   $('dateBadge').classList.remove('load');
-  $('subInfo').textContent = '名单日期 ' + (j.date || '—') + ' · 扫描 ' + (j.scanned || 0) + ' 个标的（ETF+板块+指数）· 生成于 ' + (j.generated_at || '—') + ' · 工作日 16:05 自动更新';
-  render();
+  var per = j.periods || {};
+  var wk = per.week || {}, mo = per.month || {};
+  $('subInfo').textContent = '名单日期 ' + (j.date || '—') + ' · 日线扫描 ' + (j.scanned || 0) +
+    ' · 周线扫描 ' + (wk.scanned || 0) + ' · 月线扫描 ' + (mo.scanned || 0) +
+    '（ETF+板块+指数）· 生成于 ' + (j.generated_at || '—') + ' · 工作日 16:05 自动更新';
+  renderAll();
 }).catch(function() {
   $('subInfo').textContent = '名单加载失败，请稍后刷新重试。';
   $('nearList').innerHTML = '<div class="stat">加载失败</div>';
