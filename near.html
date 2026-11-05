@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>ETF金叉榜 · 图形版</title>
+<title>ETF标的榜单 · MACD金叉/死叉</title>
 <style>
   :root { --up:#d43a2f; --down:#1a9e57; --ink:#1c1e21; --sub:#8a8f98; --line:#ececf0; --bg:#f6f6f8; --card:#fff; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -17,156 +17,129 @@
   .nav a { color:#2f6fd0; text-decoration:none; margin-right:14px; }
   .sub { color:var(--sub); font-size:12.5px; margin-top:6px; }
   .card { background:var(--card); border-radius:14px; padding:12px; margin-top:12px; box-shadow:0 1px 3px rgba(20,20,40,.05); }
-  .tabs { display:flex; gap:8px; flex-wrap:wrap; }
-  .tabs button { border:1px solid var(--line); background:#fff; border-radius:99px; padding:6px 13px; font-size:13.5px; color:var(--ink); }
-  .tabs button.on { background:#1c1e21; color:#fff; border-color:#1c1e21; }
-  .tip { font-size:12px; color:var(--sub); margin:10px 0 2px; }
-  .cols { display:grid; grid-template-columns:repeat(auto-fit, minmax(290px, 1fr)); gap:14px; margin-top:6px; }
+  .card h2 { font-size:16.5px; margin:2px 0 4px; }
+  .card h2 small { color:var(--sub); font-weight:400; font-size:12px; margin-left:6px; }
+  .cols { display:grid; grid-template-columns:repeat(auto-fit, minmax(290px, 1fr)); gap:14px; margin-top:4px; }
   .colh { font-size:15px; font-weight:600; padding:4px 2px 2px; }
   .colh small { color:var(--sub); font-weight:400; font-size:12px; margin-left:6px; }
   .colh .prov { color:#b97d1e; font-weight:400; font-size:11.5px; margin-left:6px; }
-  .nrow { display:flex; justify-content:space-between; align-items:center; padding:10px 2px; border-top:1px solid var(--line); cursor:pointer; }
-  .nrow .nm { font-size:14.5px; }
-  .nrow .nm small { color:var(--sub); font-size:11.5px; margin-left:6px; }
-  .nrow .meta { color:var(--sub); font-size:12px; margin-top:2px; font-variant-numeric:tabular-nums; }
-  .nrow .rt { text-align:right; }
-  .nrow .pct { font-size:16px; font-weight:600; }
-  .nrow .gap { font-size:12px; color:#b97d1e; margin-top:1px; font-variant-numeric:tabular-nums; }
-  .panel { border-top:1px dashed var(--line); padding:10px 2px 12px; }
-  .panel .ph { font-size:14px; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1.5; }
-  .panel .ph b { font-weight:600; }
-  .panel .pnote { font-size:11.5px; color:var(--sub); margin-top:4px; }
-  .panel svg { width:100%; display:block; }
-  .up { color:var(--up); } .down { color:var(--down); }
+  .ent { border-top:1px solid var(--line); padding:9px 2px 10px; }
+  .enm { font-size:14.5px; }
+  .enm small { color:var(--sub); font-size:11.5px; margin-left:6px; }
+  .evol { color:var(--sub); font-size:12px; margin-top:2px; font-variant-numeric:tabular-nums; }
+  .thumbs { display:flex; gap:8px; margin-top:7px; }
+  .th { flex:1; min-width:0; }
+  .th .box { background:#fbfbfc; border:1px solid var(--line); border-radius:8px; height:58px; overflow:hidden; display:flex; align-items:center; justify-content:center; color:var(--sub); font-size:11px; cursor:pointer; }
+  .th .box svg { width:100%; height:58px; display:block; }
+  .th .cap { text-align:center; color:var(--sub); font-size:10.5px; margin-top:2px; }
   .stat { text-align:center; color:var(--sub); font-size:12px; padding:12px 0 6px; }
   .more { display:block; width:100%; margin-top:6px; border:1px solid var(--line); background:#fff; border-radius:10px; padding:9px; font-size:13.5px; color:var(--ink); }
   .foot { color:var(--sub); font-size:12px; line-height:1.7; margin-top:14px; padding:0 4px; }
+  #zoomOverlay { display:none; position:fixed; inset:0; background:rgba(15,15,20,.55); z-index:50; padding:18px 12px; }
+  #zoomCard { background:#fff; border-radius:14px; max-width:860px; margin:6vh auto 0; padding:14px; }
+  #zoomTitle { font-size:15.5px; font-weight:600; }
+  #zoomTitle small { color:var(--sub); font-weight:400; font-size:12px; margin-left:6px; }
+  #zoomChart { margin-top:10px; }
+  #zoomChart svg { width:100%; display:block; }
+  #zoomClose { display:block; width:100%; margin-top:12px; border:1px solid var(--line); background:#fff; border-radius:10px; padding:10px; font-size:14px; color:var(--ink); }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>ETF金叉榜</h1><span class="badge load" id="dateBadge">加载中…</span>
+    <h1>ETF标的榜单</h1><span class="badge load" id="dateBadge">加载中…</span>
     <div class="nav"><a href="./index.html">指数基金实时估算榜</a><a href="./rank.html">全市场涨跌榜+自选</a><a href="./etf.html">ETF实时榜·资金流</a></div>
     <div class="sub" id="subInfo">正在加载名单…</div>
   </header>
 
   <section class="card">
-    <div class="tabs" id="listTabs">
-      <button data-l="near" class="on">即将金叉</button>
-      <button data-l="mg">MACD金叉</button>
-      <button data-l="md">MACD死叉</button>
-      <button data-l="kg">KDJ金叉</button>
-      <button data-l="kd">KDJ死叉</button>
-    </div>
-    <div class="tip" id="tipLine">点任意一行，看它的图形（最近 60 根）。</div>
-    <div class="cols" id="colsBox"><div class="stat">加载中…</div></div>
+    <h2>MACD 金叉<small>点图可放大</small></h2>
+    <div class="cols" id="goldCols"><div class="stat">加载中…</div></div>
   </section>
 
-  <div class="foot">只含全市场 ETF（板块、指数不列）。日线、周线、月线三列同页并列；周线/月线按最近一根 K 线计算，本周/本月没走完，标了「未定格」，周五/月末收盘才定格。名单每个工作日收盘后自动更新；点开的图形为点开时实时拉取的 K 线计算。仅列技术形态，不构成买卖建议。</div>
+  <section class="card">
+    <h2>MACD 死叉<small>点图可放大</small></h2>
+    <div class="cols" id="deadCols"><div class="stat">加载中…</div></div>
+  </section>
+
+  <div class="foot">只含全市场 ETF。每只标的：名称、成交量、成交额，下面是 MACD 图和 KDJ 图的缩略图（最近 60 根），点图放大看。日 K、周 K、月 K 三列并列；周/月 K 按最近一根 K 线计算，本周/本月没走完，标了「未定格」，周五/月末收盘才定格。名单每个工作日收盘后自动更新；量、额和图形为打开页面时拉取的最新数据。仅列技术形态，不构成买卖建议。</div>
 </div>
+
+<div id="zoomOverlay">
+  <div id="zoomCard">
+    <div id="zoomTitle"></div>
+    <div id="zoomChart"></div>
+    <button id="zoomClose">关闭</button>
+  </div>
+</div>
+
 <script>
 var $ = function(id) { return document.getElementById(id); };
 function esc(s) { return String(s).replace(/[&<>"']/g, function(c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function fmt(v, d) { return (v === null || v === undefined || isNaN(v)) ? '—' : Number(v).toFixed(d); }
-function fv(v) { return Math.abs(v) >= 10 ? fmt(v, 2) : fmt(v, 3); }
-function pctHtml(p) {
-  if (p === null || p === undefined || isNaN(p)) return '<span class="pct">—</span>';
-  var cls = p > 0 ? 'up' : (p < 0 ? 'down' : '');
-  return '<span class="pct ' + cls + '">' + (p > 0 ? '+' : '') + fmt(p, 2) + '%</span>';
-}
 
-/* ---------- 状态与数据 ---------- */
+/* ---------- 数据 ---------- */
 var DATA = null;
-var curList = 'near';
-var PAGE = 60;
-var shownMap = { day: PAGE, week: PAGE, month: PAGE };
-var openKey = null, openPeriod = 'day', chartCache = {};
+var PAGE = 40;
+var shownMap = { golden: { day: PAGE, week: PAGE, month: PAGE }, death: { day: PAGE, week: PAGE, month: PAGE } };
+var chartCache = {};
 var KLT = { day: 101, week: 102, month: 103 };
 var BEG = { day: 500, week: 1700, month: 3300 };
 var THS_P = { day: '01', week: '11', month: '21' };
 var THS_N = { day: 500, week: 300, month: 200 };
-var P_LABEL = { day: '日线', week: '周线', month: '月线' };
+var P_LABEL = { day: '日K', week: '周K', month: '月K' };
 
-function rowsFor(list, p) {
+function rowsFor(mode, p) {
   if (!DATA) return [];
   var per = DATA.periods || {};
   var rows;
-  if (list === 'near') rows = DATA.near || [];
-  else if (list === 'mg') rows = p === 'day' ? (DATA.golden || []) : ((per[p] || {}).macd_golden || []);
-  else if (list === 'md') rows = p === 'day' ? (DATA.death || []) : ((per[p] || {}).macd_death || []);
-  else if (list === 'kg') rows = p === 'day' ? (DATA.kdj_golden || []) : ((per[p] || {}).kdj_golden || []);
-  else rows = p === 'day' ? (DATA.kdj_death || []) : ((per[p] || {}).kdj_death || []);
+  if (mode === 'golden') rows = p === 'day' ? (DATA.golden || []) : ((per[p] || {}).macd_golden || []);
+  else rows = p === 'day' ? (DATA.death || []) : ((per[p] || {}).macd_death || []);
   return rows.filter(function(e) { return e.kind === 'ETF'; });
 }
-function periodsShown() { return curList === 'near' ? ['day'] : ['day', 'week', 'month']; }
-function isKdj() { return curList === 'kg' || curList === 'kd'; }
-function rowMeta(e) {
-  if (curList === 'near') return 'DIF ' + fv(e.dif) + ' · DEA ' + fv(e.dea) + ' · 约 ' + (e.days == null ? '—' : e.days) + ' 天';
-  if (isKdj()) return 'K ' + fmt(e.k, 1) + ' · D ' + fmt(e.d, 1) + ' · J ' + fmt(e.j, 1);
-  return 'DIF ' + fv(e.dif) + ' · DEA ' + fv(e.dea);
-}
-function rowRight(e) {
-  var g = curList === 'near' ? '<div class="gap">距金叉 ' + fmt(e.gap_pct, 3) + '%</div>' : '';
-  return '<div class="rt">' + pctHtml(e.pct) + g + '</div>';
-}
-function renderList() {
-  $('tipLine').textContent = curList === 'near'
-    ? '即将金叉（日线）：DIF 还没上穿 DEA、差距 ≤0.5% 且在收窄。点任意一行看 MACD + KDJ 图形（最近 60 根）。'
-    : '日线、周线、月线三列并列。点任意一行看 MACD + KDJ 图形（最近 60 根）。';
+function renderSection(mode, boxId) {
   var html = '';
-  periodsShown().forEach(function(p) {
-    var rows = rowsFor(curList, p);
-    var shown = shownMap[p];
+  ['day', 'week', 'month'].forEach(function(p) {
+    var rows = rowsFor(mode, p);
+    var shown = shownMap[mode][p];
     html += '<div class="col"><div class="colh">' + P_LABEL[p] + '<small>共 ' + rows.length + ' 只</small>' +
       (p === 'day' ? '' : '<span class="prov">未定格</span>') + '</div>';
     if (!rows.length) {
-      html += '<div class="stat">暂无 ETF</div>';
+      html += '<div class="stat">暂无</div>';
     } else {
-      html += rows.slice(0, shown).map(function(e, i) {
-        var key = e.secid + '|' + p + '|' + curList;
-        var h = '<div class="nrow" data-p="' + p + '" data-i="' + i + '"><div><div class="nm">' + esc(e.name) + '<small>' + esc(e.code) + '</small></div>' +
-          '<div class="meta">' + rowMeta(e) + '</div></div>' + rowRight(e) + '</div>';
-        if (openKey === key) h += '<div class="panel" id="openPanel"><div class="ph">加载图形中…</div></div>';
-        return h;
+      html += rows.slice(0, shown).map(function(e) {
+        return '<div class="ent" data-secid="' + esc(e.secid) + '" data-code="' + esc(e.code) + '" data-name="' + esc(e.name) + '" data-p="' + p + '">' +
+          '<div class="enm">' + esc(e.name) + '<small>' + esc(e.code) + '</small></div>' +
+          '<div class="evol">量 — · 额 —</div>' +
+          '<div class="thumbs"><div class="th"><div class="box" data-t="M">图加载中…</div><div class="cap">MACD</div></div>' +
+          '<div class="th"><div class="box" data-t="K">图加载中…</div><div class="cap">KDJ</div></div></div></div>';
       }).join('');
-      if (rows.length > shown) html += '<button class="more" data-p="' + p + '">显示更多（剩 ' + (rows.length - shown) + ' 只）</button>';
+      if (rows.length > shown) html += '<button class="more" data-mode="' + mode + '" data-p="' + p + '">显示更多（剩 ' + (rows.length - shown) + ' 只）</button>';
     }
     html += '</div>';
   });
-  $('colsBox').innerHTML = html;
-  Array.prototype.forEach.call($('colsBox').querySelectorAll('.nrow'), function(el) {
+  $(boxId).innerHTML = html;
+  Array.prototype.forEach.call($(boxId).querySelectorAll('.more'), function(el) {
     el.onclick = function() {
-      var p = el.getAttribute('data-p');
-      toggleRow(rowsFor(curList, p)[Number(el.getAttribute('data-i'))], p);
+      shownMap[el.getAttribute('data-mode')][el.getAttribute('data-p')] += PAGE;
+      renderSection(mode, boxId);
+      observeEntries();
     };
   });
-  Array.prototype.forEach.call($('colsBox').querySelectorAll('.more'), function(el) {
-    el.onclick = function() { shownMap[el.getAttribute('data-p')] += PAGE; renderList(); };
+  Array.prototype.forEach.call($(boxId).querySelectorAll('.th .box'), function(box) {
+    box.onclick = function() {
+      var ent = box.parentNode.parentNode.parentNode;
+      openZoom(ent, box.getAttribute('data-t'));
+    };
   });
-  if (openKey) {
-    var oe = null;
-    rowsFor(curList, openPeriod).forEach(function(e) { if (e.secid + '|' + openPeriod + '|' + curList === openKey) oe = e; });
-    if (oe) loadChart(oe, openPeriod);
-  }
 }
-function toggleRow(e, p) {
-  var key = e.secid + '|' + p + '|' + curList;
-  if (openKey === key) { openKey = null; } else { openKey = key; openPeriod = p; }
-  renderList();
+function renderAll() {
+  renderSection('golden', 'goldCols');
+  renderSection('death', 'deadCols');
+  observeEntries();
 }
-Array.prototype.forEach.call($('listTabs').querySelectorAll('button'), function(btn) {
-  btn.onclick = function() {
-    curList = btn.getAttribute('data-l');
-    shownMap = { day: PAGE, week: PAGE, month: PAGE };
-    openKey = null;
-    Array.prototype.forEach.call($('listTabs').querySelectorAll('button'), function(b) { b.classList.remove('on'); });
-    btn.classList.add('on');
-    renderList();
-  };
-});
 
-/* ---------- K 线拉取（东方财富优先，同花顺备选） ---------- */
+/* ---------- 量 / 额（实时行情批量拉取） ---------- */
 function fetchJSON(url, timeoutMs) {
   return new Promise(function(resolve, reject) {
     var ctl = new AbortController();
@@ -177,6 +150,50 @@ function fetchJSON(url, timeoutMs) {
     }).then(function(j) { clearTimeout(t); resolve(j); }).catch(function(e) { clearTimeout(t); reject(e); });
   });
 }
+async function ulistQuotes(secids) {
+  var map = {};
+  var chunks = [];
+  for (var i = 0; i < secids.length; i += 150) chunks.push(secids.slice(i, i + 150));
+  for (var ci = 0; ci < chunks.length; ci++) {
+    var path = '/api/qt/ulist.np/get?fltt=2&invt=2&fields=f12,f13,f5,f6&secids=' + chunks[ci].join(',');
+    var j = null;
+    var hosts = ['push2.eastmoney.com', 'push2delay.eastmoney.com'];
+    for (var hi = 0; hi < hosts.length && !j; hi++) {
+      try { j = await fetchJSON('https://' + hosts[hi] + path, 12000); } catch (e) { j = null; }
+    }
+    var diff = (j && j.data && j.data.diff) || [];
+    diff.forEach(function(x) { map[x.f13 + '.' + x.f12] = { vol: x.f5, amt: x.f6 }; });
+  }
+  return map;
+}
+function fmtVol(v) {
+  if (v === null || v === undefined || isNaN(v)) return '—';
+  return fmt(v / 10000, 2) + '万手';
+}
+function fmtAmt(v) {
+  if (v === null || v === undefined || isNaN(v)) return '—';
+  if (Math.abs(v) >= 1e8) return fmt(v / 1e8, 2) + '亿';
+  if (Math.abs(v) >= 1e4) return fmt(v / 1e4, 1) + '万';
+  return String(v);
+}
+async function loadQuotes() {
+  var seen = {}, secids = [];
+  ['golden', 'death'].forEach(function(mode) {
+    ['day', 'week', 'month'].forEach(function(p) {
+      rowsFor(mode, p).forEach(function(e) { if (!seen[e.secid]) { seen[e.secid] = 1; secids.push(e.secid); } });
+    });
+  });
+  if (!secids.length) return;
+  try {
+    var map = await ulistQuotes(secids);
+    Array.prototype.forEach.call(document.querySelectorAll('.ent'), function(ent) {
+      var q = map[ent.getAttribute('data-secid')];
+      if (q) ent.querySelector('.evol').textContent = '量 ' + fmtVol(q.vol) + ' · 额 ' + fmtAmt(q.amt);
+    });
+  } catch (e) { /* 行情失败则保持 — */ }
+}
+
+/* ---------- K 线拉取（东方财富优先，同花顺备选） ---------- */
 function fetchTHSJsonp(code, periodCode, lastN) {
   return new Promise(function(resolve, reject) {
     var cbName = 'quotebridge_v6_line_hs_' + code + '_' + periodCode + '_last' + lastN;
@@ -193,10 +210,10 @@ function fetchTHSJsonp(code, periodCode, lastN) {
     document.head.appendChild(s);
   });
 }
-async function fetchBars(e, period) {
+async function fetchBars(secid, code, period) {
   var beg = new Date(Date.now() - BEG[period] * 864e5);
   var begS = beg.getFullYear() + String(beg.getMonth() + 1).padStart(2, '0') + String(beg.getDate()).padStart(2, '0');
-  var url = 'https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=' + e.secid +
+  var url = 'https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=' + secid +
     '&fields1=f1,f2&fields2=f51,f52,f53,f54,f55&klt=' + KLT[period] + '&fqt=1&beg=' + begS + '&end=20500101';
   for (var att = 0; att < 2; att++) {
     try {
@@ -208,7 +225,7 @@ async function fetchBars(e, period) {
   }
   for (var att2 = 0; att2 < 2; att2++) {
     try {
-      var tj = await fetchTHSJsonp(e.code, THS_P[period], THS_N[period]);
+      var tj = await fetchTHSJsonp(code, THS_P[period], THS_N[period]);
       var data = (tj && tj.data) || '';
       var bars = data.split(';').filter(Boolean).map(function(s) {
         var p = s.split(',');
@@ -221,7 +238,7 @@ async function fetchBars(e, period) {
   return null;
 }
 
-/* ---------- 指标与画图 ---------- */
+/* ---------- 指标与画图（纯图形，无数值） ---------- */
 function ema(arr, n) {
   var k = 2 / (n + 1), out = [], prev = null;
   for (var i = 0; i < arr.length; i++) { prev = prev === null ? arr[i] : arr[i] * k + prev * (1 - k); out.push(prev); }
@@ -255,7 +272,7 @@ function chartMACD(dif, dea, bar, h) {
   var X = function(i) { return pad + (w - 2 * pad) * i / (dif.length - 1); };
   var Y = function(v) { return pad + (h - 2 * pad) * (1 - (v - mn) / (mx - mn)); };
   var bw = Math.max(1, (w - 2 * pad) / dif.length - 0.4);
-  var svg = '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="height:' + h + 'px">';
+  var svg = '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="height:100%">';
   svg += '<line x1="0" y1="' + Y(0).toFixed(1) + '" x2="' + w + '" y2="' + Y(0).toFixed(1) + '" stroke="#d8d8de" stroke-width="1"/>';
   bar.forEach(function(v, i) {
     var y0 = Y(0), y1 = Y(v);
@@ -279,7 +296,7 @@ function chartLines(seriesList, h) {
   if (mx === mn) { mx += 1; mn -= 1; }
   var X = function(i) { return pad + (w - 2 * pad) * i / (seriesList[0].vals.length - 1); };
   var Y = function(v) { return pad + (h - 2 * pad) * (1 - (v - mn) / (mx - mn)); };
-  var svg = '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="height:' + h + 'px">';
+  var svg = '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="height:100%">';
   if (mn < 0 && mx > 0) svg += '<line x1="0" y1="' + Y(0).toFixed(1) + '" x2="' + w + '" y2="' + Y(0).toFixed(1) + '" stroke="#d8d8de" stroke-width="1"/>';
   seriesList.forEach(function(s) {
     var d = '';
@@ -289,43 +306,107 @@ function chartLines(seriesList, h) {
   svg += '</svg>';
   return svg;
 }
-async function loadChart(e, period) {
-  var panel = $('openPanel');
-  if (!panel) return;
-  var cacheKey = e.secid + '|' + period;
-  try {
-    var bars = chartCache[cacheKey];
-    if (!bars) {
-      bars = await fetchBars(e, period);
-      if (!bars) { panel.innerHTML = '<div class="ph">图形加载失败，点行收起后再打开重试。</div>'; return; }
-      chartCache[cacheKey] = bars;
-    }
-    if (!$('openPanel')) return;
-    var N = 60, last = bars.length - 1;
-    var sl = function(a) { return a.slice(-N); };
-    var note = P_LABEL[period] + ' · 最近 60 根 · ' + bars[Math.max(0, last - N + 1)].d + ' ~ ' + bars[last].d + ' · 点行可收起';
+function thumbCharts(bars) {
+  var N = 60;
+  var sl = function(a) { return a.slice(-N); };
+  var M = macdCalc(bars.map(function(b) { return b.c; }));
+  var KJ = kdjCalc(bars);
+  return {
+    M: chartMACD(sl(M.dif), sl(M.dea), sl(M.bar), 58),
+    K: chartLines([{ vals: sl(KJ.K), color: '#e8a13a' }, { vals: sl(KJ.D), color: '#2f6fd0' }, { vals: sl(KJ.J), color: '#b05fd0' }], 58)
+  };
+}
+function bigChart(bars, t) {
+  var N = 120;
+  var sl = function(a) { return a.slice(-N); };
+  if (t === 'M') {
     var M = macdCalc(bars.map(function(b) { return b.c; }));
-    var KJ = kdjCalc(bars);
-    panel.innerHTML = '<div class="ph">MACD (12, 26, 9)：MACD:<b>' + fv(M.bar[last]) + '</b> DIFF:<b>' + fv(M.dif[last]) + '</b> DEA:<b>' + fv(M.dea[last]) + '</b></div>' +
-      chartMACD(sl(M.dif), sl(M.dea), sl(M.bar), 120) +
-      '<div class="ph" style="margin-top:8px">KDJ (9, 3, 3)：K:<b>' + fmt(KJ.K[last], 2) + '</b> D:<b>' + fmt(KJ.D[last], 2) + '</b> J:<b>' + fmt(KJ.J[last], 2) + '</b></div>' +
-      chartLines([{ vals: sl(KJ.K), color: '#e8a13a' }, { vals: sl(KJ.D), color: '#2f6fd0' }, { vals: sl(KJ.J), color: '#b05fd0' }], 110) +
-      '<div class="pnote">' + note + '</div>';
-  } catch (err) {
-    if ($('openPanel')) $('openPanel').innerHTML = '<div class="ph">图形加载失败，点行收起后再打开重试。</div>';
+    return chartMACD(sl(M.dif), sl(M.dea), sl(M.bar), 230);
+  }
+  var KJ = kdjCalc(bars);
+  return chartLines([{ vals: sl(KJ.K), color: '#e8a13a' }, { vals: sl(KJ.D), color: '#2f6fd0' }, { vals: sl(KJ.J), color: '#b05fd0' }], 230);
+}
+
+/* ---------- 缩略图懒加载（滚到才拉 K 线，并发 4） ---------- */
+var loadQ = [], activeLoads = 0, observer = null;
+function pumpQ() {
+  while (activeLoads < 4 && loadQ.length) {
+    var job = loadQ.shift();
+    activeLoads++;
+    job().then(function() { activeLoads--; pumpQ(); }, function() { activeLoads--; pumpQ(); });
   }
 }
+async function loadEntry(ent) {
+  var secid = ent.getAttribute('data-secid'), code = ent.getAttribute('data-code'), p = ent.getAttribute('data-p');
+  var key = secid + '|' + p;
+  try {
+    var bars = chartCache[key];
+    if (!bars) {
+      bars = await fetchBars(secid, code, p);
+      if (!bars) {
+        ent.querySelectorAll('.th .box').forEach(function(b) { b.textContent = '图加载失败'; });
+        return;
+      }
+      chartCache[key] = bars;
+    }
+    var ch = thumbCharts(bars);
+    ent.querySelector('[data-t="M"]').innerHTML = ch.M;
+    ent.querySelector('[data-t="K"]').innerHTML = ch.K;
+  } catch (e) {
+    ent.querySelectorAll('.th .box').forEach(function(b) { b.textContent = '图加载失败'; });
+  }
+}
+function observeEntries() {
+  var ents = document.querySelectorAll('.ent:not([data-obs])');
+  if (!('IntersectionObserver' in window)) {
+    ents.forEach(function(ent) { ent.setAttribute('data-obs', '1'); loadQ.push(function() { return loadEntry(ent); }); });
+    pumpQ();
+    return;
+  }
+  if (!observer) {
+    observer = new IntersectionObserver(function(es) {
+      es.forEach(function(en) {
+        if (en.isIntersecting) {
+          observer.unobserve(en.target);
+          var ent = en.target;
+          loadQ.push(function() { return loadEntry(ent); });
+          pumpQ();
+        }
+      });
+    }, { rootMargin: '250px' });
+  }
+  ents.forEach(function(ent) { ent.setAttribute('data-obs', '1'); observer.observe(ent); });
+}
+
+/* ---------- 放大 ---------- */
+async function openZoom(ent, t) {
+  var secid = ent.getAttribute('data-secid'), code = ent.getAttribute('data-code'), p = ent.getAttribute('data-p');
+  $('zoomTitle').innerHTML = esc(ent.getAttribute('data-name')) + '<small>' + esc(code) + ' · ' + P_LABEL[p] + ' · ' + (t === 'M' ? 'MACD' : 'KDJ') + '</small>';
+  $('zoomChart').innerHTML = '<div class="stat">加载中…</div>';
+  $('zoomOverlay').style.display = 'block';
+  var key = secid + '|' + p;
+  var bars = chartCache[key];
+  if (!bars) {
+    bars = await fetchBars(secid, code, p);
+    if (bars) chartCache[key] = bars;
+  }
+  if (!bars) { $('zoomChart').innerHTML = '<div class="stat">图加载失败</div>'; return; }
+  $('zoomChart').innerHTML = bigChart(bars, t);
+}
+$('zoomClose').onclick = function() { $('zoomOverlay').style.display = 'none'; };
+$('zoomOverlay').onclick = function(e) { if (e.target === this) this.style.display = 'none'; };
 
 /* ---------- 启动 ---------- */
 fetch('./macd-cross.json?t=' + Date.now()).then(function(r) { return r.json(); }).then(function(j) {
   DATA = j;
   $('dateBadge').textContent = '名单日期 ' + (j.date || '—');
   $('dateBadge').classList.remove('load');
-  $('subInfo').textContent = '名单日期 ' + (j.date || '—') + ' · 只含 ETF · 生成于 ' + (j.created_at || j.generated_at || '—') + ' · 工作日收盘后更新';
-  renderList();
+  $('subInfo').textContent = '名单日期 ' + (j.date || '—') + ' · 只含 ETF · 生成于 ' + (j.generated_at || '—') + ' · 工作日收盘后更新';
+  renderAll();
+  loadQuotes();
 }).catch(function() {
   $('subInfo').textContent = '名单加载失败，请稍后刷新重试。';
-  $('colsBox').innerHTML = '<div class="stat">加载失败</div>';
+  $('goldCols').innerHTML = '<div class="stat">加载失败</div>';
 });
 </script>
 </body>
