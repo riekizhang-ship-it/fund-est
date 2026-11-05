@@ -27,11 +27,11 @@
   .enm { font-size:14.5px; }
   .enm small { color:var(--sub); font-size:11.5px; margin-left:6px; }
   .evol { color:var(--sub); font-size:12px; margin-top:2px; font-variant-numeric:tabular-nums; }
-  .thumbs { display:flex; gap:8px; margin-top:7px; }
-  .th { flex:1; min-width:0; }
-  .th .box { background:#fbfbfc; border:1px solid var(--line); border-radius:8px; height:58px; overflow:hidden; display:flex; align-items:center; justify-content:center; color:var(--sub); font-size:11px; cursor:pointer; }
-  .th .box svg { width:100%; height:58px; display:block; }
-  .th .cap { text-align:center; color:var(--sub); font-size:10.5px; margin-top:2px; }
+  .thumbs { display:flex; flex-direction:column; gap:6px; margin-top:7px; }
+  .th { min-width:0; }
+  .th .box { background:#fff; border:1px solid var(--line); border-radius:8px; height:64px; overflow:hidden; display:flex; align-items:center; justify-content:center; color:var(--sub); font-size:11px; cursor:pointer; }
+  .th .box svg { width:100%; height:64px; display:block; }
+  .th .cap { color:var(--sub); font-size:10.5px; margin-bottom:2px; }
   .stat { text-align:center; color:var(--sub); font-size:12px; padding:12px 0 6px; }
   .more { display:block; width:100%; margin-top:6px; border:1px solid var(--line); background:#fff; border-radius:10px; padding:9px; font-size:13.5px; color:var(--ink); }
   .foot { color:var(--sub); font-size:12px; line-height:1.7; margin-top:14px; padding:0 4px; }
@@ -41,6 +41,7 @@
   #zoomTitle small { color:var(--sub); font-weight:400; font-size:12px; margin-left:6px; }
   #zoomChart { margin-top:10px; }
   #zoomChart svg { width:100%; display:block; }
+  #zoomChart .cap { color:var(--sub); font-size:11.5px; margin-bottom:3px; }
   #zoomClose { display:block; width:100%; margin-top:12px; border:1px solid var(--line); background:#fff; border-radius:10px; padding:10px; font-size:14px; color:var(--ink); }
 </style>
 </head>
@@ -111,8 +112,8 @@ function renderSection(mode, boxId) {
         return '<div class="ent" data-secid="' + esc(e.secid) + '" data-code="' + esc(e.code) + '" data-name="' + esc(e.name) + '" data-p="' + p + '">' +
           '<div class="enm">' + esc(e.name) + '<small>' + esc(e.code) + '</small></div>' +
           '<div class="evol">量 — · 额 —</div>' +
-          '<div class="thumbs"><div class="th"><div class="box" data-t="M">图加载中…</div><div class="cap">MACD</div></div>' +
-          '<div class="th"><div class="box" data-t="K">图加载中…</div><div class="cap">KDJ</div></div></div></div>';
+          '<div class="thumbs"><div class="th"><div class="cap">MACD</div><div class="box" data-t="M">图加载中…</div></div>' +
+          '<div class="th"><div class="cap">KDJ</div><div class="box" data-t="K">图加载中…</div></div></div></div>';
       }).join('');
       if (rows.length > shown) html += '<button class="more" data-mode="' + mode + '" data-p="' + p + '">显示更多（剩 ' + (rows.length - shown) + ' 只）</button>';
     }
@@ -271,19 +272,19 @@ function chartMACD(dif, dea, bar, h) {
   if (mx === mn) { mx += 1; mn -= 1; }
   var X = function(i) { return pad + (w - 2 * pad) * i / (dif.length - 1); };
   var Y = function(v) { return pad + (h - 2 * pad) * (1 - (v - mn) / (mx - mn)); };
-  var bw = Math.max(1, (w - 2 * pad) / dif.length - 0.4);
+  var bw = Math.max(1, (w - 2 * pad) / dif.length);
   var svg = '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="height:100%">';
-  svg += '<line x1="0" y1="' + Y(0).toFixed(1) + '" x2="' + w + '" y2="' + Y(0).toFixed(1) + '" stroke="#d8d8de" stroke-width="1"/>';
+  svg += '<line x1="0" y1="' + Y(0).toFixed(1) + '" x2="' + w + '" y2="' + Y(0).toFixed(1) + '" stroke="#c9c9d1" stroke-width="1"/>';
   bar.forEach(function(v, i) {
     var y0 = Y(0), y1 = Y(v);
-    svg += '<rect x="' + (X(i) - bw / 2).toFixed(1) + '" y="' + Math.min(y0, y1).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + Math.max(1, Math.abs(y1 - y0)).toFixed(1) + '" fill="' + (v >= 0 ? '#d43a2f' : '#1a9e57') + '" opacity="0.55"/>';
+    svg += '<rect x="' + (X(i) - bw / 2).toFixed(1) + '" y="' + Math.min(y0, y1).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + Math.max(1, Math.abs(y1 - y0)).toFixed(1) + '" fill="' + (v >= 0 ? '#e02b20' : '#12964f') + '"/>';
   });
   function line(vals, color) {
     var d = '';
     vals.forEach(function(v, i) { d += (d ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1) + ' '; });
-    return '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="1.6" vector-effect="non-scaling-stroke"/>';
+    return '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="1.7" vector-effect="non-scaling-stroke"/>';
   }
-  svg += line(dif, '#55555e') + line(dea, '#2f4fd0');
+  svg += line(dif, '#1a1a1a') + line(dea, '#2f4fd0');
   svg += '</svg>';
   return svg;
 }
@@ -306,25 +307,47 @@ function chartLines(seriesList, h) {
   svg += '</svg>';
   return svg;
 }
+function kdjSeries(KJ) {
+  return [{ vals: KJ.K, color: '#f08c1a' }, { vals: KJ.D, color: '#d6336c' }, { vals: KJ.J, color: '#1a1a1a' }];
+}
 function thumbCharts(bars) {
   var N = 60;
   var sl = function(a) { return a.slice(-N); };
   var M = macdCalc(bars.map(function(b) { return b.c; }));
   var KJ = kdjCalc(bars);
   return {
-    M: chartMACD(sl(M.dif), sl(M.dea), sl(M.bar), 58),
-    K: chartLines([{ vals: sl(KJ.K), color: '#e8a13a' }, { vals: sl(KJ.D), color: '#2f6fd0' }, { vals: sl(KJ.J), color: '#b05fd0' }], 58)
+    M: chartMACD(sl(M.dif), sl(M.dea), sl(M.bar), 64),
+    K: chartLines(kdjSeries({ K: sl(KJ.K), D: sl(KJ.D), J: sl(KJ.J) }), 64)
   };
 }
-function bigChart(bars, t) {
-  var N = 120;
+function chartCandles(bars, h) {
+  var w = 720, pad = 6;
+  var mn = Infinity, mx = -Infinity, i;
+  for (i = 0; i < bars.length; i++) { mn = Math.min(mn, bars[i].l); mx = Math.max(mx, bars[i].h); }
+  if (mx === mn) { mx += 1; mn -= 1; }
+  var X = function(i) { return pad + (w - 2 * pad) * i / (bars.length - 1); };
+  var Y = function(v) { return pad + (h - 2 * pad) * (1 - (v - mn) / (mx - mn)); };
+  var bw = Math.max(1, (w - 2 * pad) / bars.length * 0.72);
+  var svg = '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="height:' + h + 'px;width:100%">';
+  bars.forEach(function(b, i) {
+    var up = b.c >= b.o;
+    var col = up ? '#d43a2f' : '#12964f';
+    svg += '<line x1="' + X(i).toFixed(1) + '" y1="' + Y(b.h).toFixed(1) + '" x2="' + X(i).toFixed(1) + '" y2="' + Y(b.l).toFixed(1) + '" stroke="' + col + '" stroke-width="1.2" vector-effect="non-scaling-stroke"/>';
+    var yT = Y(Math.max(b.o, b.c)), yB = Y(Math.min(b.o, b.c));
+    svg += '<rect x="' + (X(i) - bw / 2).toFixed(1) + '" y="' + yT.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + Math.max(1, yB - yT).toFixed(1) + '" fill="' + (up ? '#ffffff' : col) + '" stroke="' + col + '" stroke-width="1.1" vector-effect="non-scaling-stroke"/>';
+  });
+  svg += '</svg>';
+  return svg;
+}
+function bigStack(bars) {
+  var N = 60;
   var sl = function(a) { return a.slice(-N); };
-  if (t === 'M') {
-    var M = macdCalc(bars.map(function(b) { return b.c; }));
-    return chartMACD(sl(M.dif), sl(M.dea), sl(M.bar), 230);
-  }
+  var win = bars.slice(-N);
+  var M = macdCalc(bars.map(function(b) { return b.c; }));
   var KJ = kdjCalc(bars);
-  return chartLines([{ vals: sl(KJ.K), color: '#e8a13a' }, { vals: sl(KJ.D), color: '#2f6fd0' }, { vals: sl(KJ.J), color: '#b05fd0' }], 230);
+  return '<div class="cap">K线</div>' + chartCandles(win, 190) +
+    '<div class="cap" style="margin-top:8px">MACD (12, 26, 9)</div><div style="height:120px">' + chartMACD(sl(M.dif), sl(M.dea), sl(M.bar), 120) + '</div>' +
+    '<div class="cap" style="margin-top:8px">KDJ (9, 3, 3)</div><div style="height:120px">' + chartLines(kdjSeries({ K: sl(KJ.K), D: sl(KJ.D), J: sl(KJ.J) }), 120) + '</div>';
 }
 
 /* ---------- 缩略图懒加载（滚到才拉 K 线，并发 4） ---------- */
@@ -381,7 +404,7 @@ function observeEntries() {
 /* ---------- 放大 ---------- */
 async function openZoom(ent, t) {
   var secid = ent.getAttribute('data-secid'), code = ent.getAttribute('data-code'), p = ent.getAttribute('data-p');
-  $('zoomTitle').innerHTML = esc(ent.getAttribute('data-name')) + '<small>' + esc(code) + ' · ' + P_LABEL[p] + ' · ' + (t === 'M' ? 'MACD' : 'KDJ') + '</small>';
+  $('zoomTitle').innerHTML = esc(ent.getAttribute('data-name')) + '<small>' + esc(code) + ' · ' + P_LABEL[p] + '</small>';
   $('zoomChart').innerHTML = '<div class="stat">加载中…</div>';
   $('zoomOverlay').style.display = 'block';
   var key = secid + '|' + p;
@@ -391,7 +414,7 @@ async function openZoom(ent, t) {
     if (bars) chartCache[key] = bars;
   }
   if (!bars) { $('zoomChart').innerHTML = '<div class="stat">图加载失败</div>'; return; }
-  $('zoomChart').innerHTML = bigChart(bars, t);
+  $('zoomChart').innerHTML = bigStack(bars);
 }
 $('zoomClose').onclick = function() { $('zoomOverlay').style.display = 'none'; };
 $('zoomOverlay').onclick = function(e) { if (e.target === this) this.style.display = 'none'; };
