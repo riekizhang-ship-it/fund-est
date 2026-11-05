@@ -112,8 +112,8 @@ function rowRight(e) {
 }
 function renderList() {
   $('tipLine').textContent = curList === 'near'
-    ? '即将金叉（日线）：DIF 还没上穿 DEA、差距 ≤0.5% 且在收窄。点任意一行看 MACD 图形（最近 60 根）。'
-    : ('日线、周线、月线三列并列。点任意一行看' + (isKdj() ? ' KDJ ' : ' MACD ') + '图形（最近 60 根）。');
+    ? '即将金叉（日线）：DIF 还没上穿 DEA、差距 ≤0.5% 且在收窄。点任意一行看 MACD + KDJ 图形（最近 60 根）。'
+    : '日线、周线、月线三列并列。点任意一行看 MACD + KDJ 图形（最近 60 根）。';
   var html = '';
   periodsShown().forEach(function(p) {
     var rows = rowsFor(curList, p);
@@ -304,17 +304,13 @@ async function loadChart(e, period) {
     var N = 60, last = bars.length - 1;
     var sl = function(a) { return a.slice(-N); };
     var note = P_LABEL[period] + ' · 最近 60 根 · ' + bars[Math.max(0, last - N + 1)].d + ' ~ ' + bars[last].d + ' · 点行可收起';
-    if (isKdj()) {
-      var KJ = kdjCalc(bars);
-      panel.innerHTML = '<div class="ph">KDJ (9, 3, 3)：K:<b>' + fmt(KJ.K[last], 2) + '</b> D:<b>' + fmt(KJ.D[last], 2) + '</b> J:<b>' + fmt(KJ.J[last], 2) + '</b></div>' +
-        chartLines([{ vals: sl(KJ.K), color: '#e8a13a' }, { vals: sl(KJ.D), color: '#2f6fd0' }, { vals: sl(KJ.J), color: '#b05fd0' }], 110) +
-        '<div class="pnote">' + note + '</div>';
-    } else {
-      var M = macdCalc(bars.map(function(b) { return b.c; }));
-      panel.innerHTML = '<div class="ph">MACD (12, 26, 9)：MACD:<b>' + fv(M.bar[last]) + '</b> DIFF:<b>' + fv(M.dif[last]) + '</b> DEA:<b>' + fv(M.dea[last]) + '</b></div>' +
-        chartMACD(sl(M.dif), sl(M.dea), sl(M.bar), 120) +
-        '<div class="pnote">' + note + '</div>';
-    }
+    var M = macdCalc(bars.map(function(b) { return b.c; }));
+    var KJ = kdjCalc(bars);
+    panel.innerHTML = '<div class="ph">MACD (12, 26, 9)：MACD:<b>' + fv(M.bar[last]) + '</b> DIFF:<b>' + fv(M.dif[last]) + '</b> DEA:<b>' + fv(M.dea[last]) + '</b></div>' +
+      chartMACD(sl(M.dif), sl(M.dea), sl(M.bar), 120) +
+      '<div class="ph" style="margin-top:8px">KDJ (9, 3, 3)：K:<b>' + fmt(KJ.K[last], 2) + '</b> D:<b>' + fmt(KJ.D[last], 2) + '</b> J:<b>' + fmt(KJ.J[last], 2) + '</b></div>' +
+      chartLines([{ vals: sl(KJ.K), color: '#e8a13a' }, { vals: sl(KJ.D), color: '#2f6fd0' }, { vals: sl(KJ.J), color: '#b05fd0' }], 110) +
+      '<div class="pnote">' + note + '</div>';
   } catch (err) {
     if ($('openPanel')) $('openPanel').innerHTML = '<div class="ph">图形加载失败，点行收起后再打开重试。</div>';
   }
