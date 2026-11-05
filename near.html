@@ -3,215 +3,336 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>即将MACD金叉榜 · 板块+ETF</title>
+<title>ETF金叉榜 · 图形版</title>
 <style>
   :root { --up:#d43a2f; --down:#1a9e57; --ink:#1c1e21; --sub:#8a8f98; --line:#ececf0; --bg:#f6f6f8; --card:#fff; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   body { margin:0; font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--ink); }
   .wrap { max-width:860px; margin:0 auto; padding:14px 12px 40px; }
-  header { padding:6px 2px 10px; }
+  header { padding:6px 2px 4px; }
   h1 { font-size:20px; margin:0 0 4px; display:inline-block; }
   .badge { display:inline-block; vertical-align:2px; margin-left:8px; font-size:11px; padding:2px 8px; border-radius:99px; background:#e8f6ee; color:var(--down); }
   .badge.load { background:#eef1f5; color:var(--sub); }
   .nav { font-size:13px; margin-top:6px; }
   .nav a { color:#2f6fd0; text-decoration:none; margin-right:14px; }
-  .sub { color:var(--sub); font-size:12.5px; margin-top:6px; line-height:1.55; }
-  .card { background:var(--card); border-radius:14px; padding:12px 12px 6px; margin-top:12px; box-shadow:0 1px 3px rgba(20,20,40,.05); }
-  .card h2 { font-size:15.5px; margin:2px 0 4px; }
-  .card .hint { font-size:12px; color:var(--sub); margin-bottom:6px; line-height:1.6; }
-  .tabs { display:flex; gap:8px; margin:8px 0 4px; flex-wrap:wrap; }
-  .tabs button { border:1px solid var(--line); background:#fff; border-radius:99px; padding:5px 14px; font-size:13px; color:var(--ink); }
+  .sub { color:var(--sub); font-size:12.5px; margin-top:6px; }
+  .card { background:var(--card); border-radius:14px; padding:12px; margin-top:12px; box-shadow:0 1px 3px rgba(20,20,40,.05); }
+  .tabs { display:flex; gap:8px; flex-wrap:wrap; }
+  .tabs button { border:1px solid var(--line); background:#fff; border-radius:99px; padding:6px 13px; font-size:13.5px; color:var(--ink); }
   .tabs button.on { background:#1c1e21; color:#fff; border-color:#1c1e21; }
-  .nrow { display:flex; justify-content:space-between; align-items:center; padding:10px 2px; border-top:1px solid var(--line); }
-  .nrow:first-of-type { border-top:none; }
+  .tabs.sub2 { margin-top:8px; }
+  .tabs.sub2 button { padding:4px 12px; font-size:12.5px; }
+  .tabs.sub2 button.on { background:#5a5f6a; border-color:#5a5f6a; }
+  .tip { font-size:12px; color:var(--sub); margin:10px 0 2px; }
+  .nrow { display:flex; justify-content:space-between; align-items:center; padding:10px 2px; border-top:1px solid var(--line); cursor:pointer; }
   .nrow .nm { font-size:14.5px; }
   .nrow .nm small { color:var(--sub); font-size:11.5px; margin-left:6px; }
   .nrow .meta { color:var(--sub); font-size:12px; margin-top:2px; font-variant-numeric:tabular-nums; }
   .nrow .rt { text-align:right; }
   .nrow .pct { font-size:16px; font-weight:600; }
   .nrow .gap { font-size:12px; color:#b97d1e; margin-top:1px; font-variant-numeric:tabular-nums; }
-  .tag { display:inline-block; font-size:10.5px; padding:1px 6px; border-radius:99px; background:#eef1f5; color:var(--sub); margin-left:6px; vertical-align:1px; }
+  .panel { border-top:1px dashed var(--line); padding:10px 2px 12px; }
+  .panel .ph { font-size:14px; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1.5; }
+  .panel .ph b { font-weight:600; }
+  .panel .pnote { font-size:11.5px; color:var(--sub); margin-top:4px; }
+  .panel svg { width:100%; display:block; }
   .up { color:var(--up); } .down { color:var(--down); }
-  .stat { text-align:center; color:var(--sub); font-size:12px; padding:10px 0 6px; }
-  .foot { color:var(--sub); font-size:12px; line-height:1.7; margin-top:16px; padding:0 4px; }
+  .stat { text-align:center; color:var(--sub); font-size:12px; padding:12px 0 6px; }
+  .more { display:block; width:100%; margin-top:6px; border:1px solid var(--line); background:#fff; border-radius:10px; padding:9px; font-size:13.5px; color:var(--ink); }
+  .foot { color:var(--sub); font-size:12px; line-height:1.7; margin-top:14px; padding:0 4px; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>即将MACD金叉榜</h1><span class="badge load" id="dateBadge">加载中…</span>
+    <h1>ETF金叉榜</h1><span class="badge load" id="dateBadge">加载中…</span>
     <div class="nav"><a href="./index.html">指数基金实时估算榜</a><a href="./rank.html">全市场涨跌榜+自选</a><a href="./etf.html">ETF实时榜·资金流</a></div>
     <div class="sub" id="subInfo">正在加载名单…</div>
   </header>
 
   <section class="card">
-    <h2>马上要金叉（日线 MACD）</h2>
-    <div class="hint">口径：DIF 还在 DEA 下方（尚未金叉），两线差距比昨日收窄，且差距不超过收盘价的 0.5%。按差距从小到大排，越靠前离金叉越近。「约 N 天」是按昨天到今天的收窄速度粗估，仅供参考。</div>
-    <div class="tabs">
-      <button id="tabAll" class="on">全部</button>
-      <button id="tabBoard">板块</button>
-      <button id="tabEtf">ETF</button>
-      <button id="tabIdx">指数</button>
+    <div class="tabs" id="listTabs">
+      <button data-l="near" class="on">即将金叉</button>
+      <button data-l="mg">MACD金叉</button>
+      <button data-l="md">MACD死叉</button>
+      <button data-l="kg">KDJ金叉</button>
+      <button data-l="kd">KDJ死叉</button>
     </div>
-    <div id="nearList"><div class="stat">加载中…</div></div>
-    <div class="stat" id="nearStat"></div>
-  </section>
-
-  <section class="card">
-    <h2>MACD 金叉</h2>
-    <div class="hint">DIF 上穿 DEA 的那个周期刚发生。周线/月线按最近一根 K 线计算：当周/当月还没走完，信号会变，周五/月末收盘后才定格。</div>
-    <div class="tabs" data-card="macdGold">
+    <div class="tabs sub2" id="periodTabs">
       <button data-p="day" class="on">日线</button>
       <button data-p="week">周线</button>
       <button data-p="month">月线</button>
     </div>
-    <div id="macdGoldList"><div class="stat">加载中…</div></div>
-    <div class="stat" id="macdGoldStat"></div>
+    <div class="tip" id="tipLine">点任意一行，看它的 MACD 图形（最近 60 根）。</div>
+    <div id="listBox"><div class="stat">加载中…</div></div>
+    <button class="more" id="moreBtn" style="display:none">显示更多</button>
+    <div class="stat" id="statLine"></div>
   </section>
 
-  <section class="card">
-    <h2>MACD 死叉</h2>
-    <div class="hint">DIF 下穿 DEA 的那个周期刚发生。周线/月线同样以最近一根 K 线计算，未定格前会变。</div>
-    <div class="tabs" data-card="macdDead">
-      <button data-p="day" class="on">日线</button>
-      <button data-p="week">周线</button>
-      <button data-p="month">月线</button>
-    </div>
-    <div id="macdDeadList"><div class="stat">加载中…</div></div>
-    <div class="stat" id="macdDeadStat"></div>
-  </section>
-
-  <section class="card">
-    <h2>KDJ 金叉</h2>
-    <div class="hint">KDJ(9,3,3)：K 线上穿 D 线的那个周期刚发生。</div>
-    <div class="tabs" data-card="kdjGold">
-      <button data-p="day" class="on">日线</button>
-      <button data-p="week">周线</button>
-      <button data-p="month">月线</button>
-    </div>
-    <div id="kdjGoldList"><div class="stat">加载中…</div></div>
-    <div class="stat" id="kdjGoldStat"></div>
-  </section>
-
-  <section class="card">
-    <h2>KDJ 死叉</h2>
-    <div class="hint">KDJ(9,3,3)：K 线下穿 D 线的那个周期刚发生。</div>
-    <div class="tabs" data-card="kdjDead">
-      <button data-p="day" class="on">日线</button>
-      <button data-p="week">周线</button>
-      <button data-p="month">月线</button>
-    </div>
-    <div id="kdjDeadList"><div class="stat">加载中…</div></div>
-    <div class="stat" id="kdjDeadStat"></div>
-  </section>
-
-  <div class="foot">
-    数据：东方财富 K 线（ETF 前复权，板块/指数不复权），MACD(12,26,9)、KDJ(9,3,3)。全市场 ETF + 板块（地域/行业/概念）+ 主要指数扫描；货币类 ETF 不参与计算。名单每个工作日 16:05 收盘后自动更新。今日已金叉/死叉也可以在 <a href="./etf.html" style="color:#2f6fd0;text-decoration:none">ETF实时榜</a> 页面看日线版。本页只列技术形态，不构成买卖建议。
-  </div>
+  <div class="foot">只含全市场 ETF（板块、指数不列）。名单每个工作日收盘后自动更新；点开的图形为点开时实时拉取的 K 线计算，盘中会跳动、收盘定格。仅列技术形态，不构成买卖建议。</div>
 </div>
 <script>
-var KIND_LABEL = {'板块': '板块', 'ETF': 'ETF', '指数': '指数'};
-var curFilter = '全部';
-var DATA = null;
 var $ = function(id) { return document.getElementById(id); };
-function fmt(v, d) { return (v === null || v === undefined || isNaN(v)) ? '—' : Number(v).toFixed(d); }
 function esc(s) { return String(s).replace(/[&<>"']/g, function(c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function fmt(v, d) { return (v === null || v === undefined || isNaN(v)) ? '—' : Number(v).toFixed(d); }
+function fv(v) { return Math.abs(v) >= 10 ? fmt(v, 2) : fmt(v, 3); }
 function pctHtml(p) {
   if (p === null || p === undefined || isNaN(p)) return '<span class="pct">—</span>';
   var cls = p > 0 ? 'up' : (p < 0 ? 'down' : '');
   return '<span class="pct ' + cls + '">' + (p > 0 ? '+' : '') + fmt(p, 2) + '%</span>';
 }
-function kindTag(e) { return '<span class="tag">' + esc(KIND_LABEL[e.kind] || e.kind) + '</span>'; }
-function countByKind(rows) {
-  return '板块 ' + rows.filter(function(e){return e.kind==='板块';}).length +
-    ' · ETF ' + rows.filter(function(e){return e.kind==='ETF';}).length +
-    ' · 指数 ' + rows.filter(function(e){return e.kind==='指数';}).length;
-}
-function renderNear() {
-  var nearData = (DATA && DATA.near) || [];
-  var rows = nearData.filter(function(e) { return curFilter === '全部' || e.kind === curFilter; });
-  if (!rows.length) {
-    $('nearList').innerHTML = '<div class="stat">该分类今日暂无即将金叉的标的</div>';
-  } else {
-    $('nearList').innerHTML = rows.map(function(e) {
-      var days = (e.days === null || e.days === undefined) ? '—' : ('约 ' + e.days + ' 天');
-      return '<div class="nrow"><div><div class="nm">' + esc(e.name) + kindTag(e) + '<small>' + esc(e.code) + '</small></div>' +
-        '<div class="meta">DIF ' + fmt(e.dif, 3) + ' · DEA ' + fmt(e.dea, 3) + ' · 按当前速度 ' + days + '</div></div>' +
-        '<div class="rt">' + pctHtml(e.pct) + '<div class="gap">距金叉 ' + fmt(e.gap_pct, 3) + '%</div></div></div>';
-    }).join('');
-  }
-  $('nearStat').textContent = '共 ' + rows.length + ' 个标的（' + countByKind(nearData) + '）';
-}
-function setTab(kind, btn) {
-  curFilter = kind;
-  ['tabAll','tabBoard','tabEtf','tabIdx'].forEach(function(id) { $(id).classList.remove('on'); });
-  btn.classList.add('on');
-  renderNear();
-}
-$('tabAll').onclick = function() { setTab('全部', this); };
-$('tabBoard').onclick = function() { setTab('板块', this); };
-$('tabEtf').onclick = function() { setTab('ETF', this); };
-$('tabIdx').onclick = function() { setTab('指数', this); };
 
-function periodRows(card, p) {
-  if (!DATA) return null;
-  var per = (DATA.periods || {});
-  if (card === 'macdGold') return p === 'day' ? (DATA.golden || []) : ((per[p] || {}).macd_golden || []);
-  if (card === 'macdDead') return p === 'day' ? (DATA.death || []) : ((per[p] || {}).macd_death || []);
-  if (card === 'kdjGold') return p === 'day' ? (DATA.kdj_golden || []) : ((per[p] || {}).kdj_golden || []);
-  if (card === 'kdjDead') return p === 'day' ? (DATA.kdj_death || []) : ((per[p] || {}).kdj_death || []);
-  return [];
+/* ---------- 状态与数据 ---------- */
+var DATA = null;
+var curList = 'near', curPeriod = 'day', shown = 0;
+var PAGE = 60;
+var openKey = null, chartCache = {};
+var KLT = { day: 101, week: 102, month: 103 };
+var BEG = { day: 500, week: 1700, month: 3300 };
+var THS_P = { day: '01', week: '11', month: '21' };
+var THS_N = { day: 500, week: 300, month: 200 };
+
+function curRows() {
+  if (!DATA) return [];
+  var per = DATA.periods || {};
+  var rows;
+  if (curList === 'near') rows = DATA.near || [];
+  else if (curList === 'mg') rows = curPeriod === 'day' ? (DATA.golden || []) : ((per[curPeriod] || {}).macd_golden || []);
+  else if (curList === 'md') rows = curPeriod === 'day' ? (DATA.death || []) : ((per[curPeriod] || {}).macd_death || []);
+  else if (curList === 'kg') rows = curPeriod === 'day' ? (DATA.kdj_golden || []) : ((per[curPeriod] || {}).kdj_golden || []);
+  else rows = curPeriod === 'day' ? (DATA.kdj_death || []) : ((per[curPeriod] || {}).kdj_death || []);
+  return rows.filter(function(e) { return e.kind === 'ETF'; });
 }
-function renderCross(card) {
-  var state = crossState[card];
-  var rows = periodRows(card, state.p);
-  var listEl = $(card + 'List'), statEl = $(card + 'Stat');
-  if (rows === null) { listEl.innerHTML = '<div class="stat">加载中…</div>'; return; }
+function isKdj() { return curList === 'kg' || curList === 'kd'; }
+function rowMeta(e) {
+  if (curList === 'near') return 'DIF ' + fv(e.dif) + ' · DEA ' + fv(e.dea) + ' · 约 ' + (e.days == null ? '—' : e.days) + ' 天';
+  if (isKdj()) return 'K ' + fmt(e.k, 1) + ' · D ' + fmt(e.d, 1) + ' · J ' + fmt(e.j, 1);
+  return 'DIF ' + fv(e.dif) + ' · DEA ' + fv(e.dea);
+}
+function rowRight(e) {
+  var g = curList === 'near' ? '<div class="gap">距金叉 ' + fmt(e.gap_pct, 3) + '%</div>' : '';
+  return '<div class="rt">' + pctHtml(e.pct) + g + '</div>';
+}
+function renderList() {
+  var rows = curRows();
+  $('periodTabs').style.display = curList === 'near' ? 'none' : 'flex';
+  $('tipLine').textContent = curList === 'near'
+    ? '即将金叉（日线）：DIF 还没上穿 DEA、差距 ≤0.5% 且在收窄。点任意一行看图形（最近 60 根）。'
+    : ('点任意一行看' + (isKdj() ? ' KDJ ' : ' MACD ') + '图形（最近 60 根）。' + (curPeriod === 'day' ? '' : '本周期还没走完，图形会变，周期收盘才定格。'));
   if (!rows.length) {
-    listEl.innerHTML = '<div class="stat">该周期暂无名单（或今晚更新后生成）</div>';
-    statEl.textContent = '';
+    $('listBox').innerHTML = '<div class="stat">该名单今日暂无 ETF</div>';
+    $('moreBtn').style.display = 'none';
+    $('statLine').textContent = '';
     return;
   }
-  var isKdj = card.indexOf('kdj') === 0;
-  listEl.innerHTML = rows.map(function(e) {
-    var meta = isKdj
-      ? ('K ' + fmt(e.k, 1) + ' · D ' + fmt(e.d, 1) + ' · J ' + fmt(e.j, 1))
-      : ('DIF ' + fmt(e.dif, 3) + ' · DEA ' + fmt(e.dea, 3));
-    return '<div class="nrow"><div><div class="nm">' + esc(e.name) + kindTag(e) + '<small>' + esc(e.code) + '</small></div>' +
-      '<div class="meta">' + meta + '</div></div>' +
-      '<div class="rt">' + pctHtml(e.pct) + '</div></div>';
+  var part = rows.slice(0, shown);
+  $('listBox').innerHTML = part.map(function(e, i) {
+    var key = e.secid + '|' + curPeriod + '|' + curList;
+    var html = '<div class="nrow" data-i="' + i + '"><div><div class="nm">' + esc(e.name) + '<small>' + esc(e.code) + '</small></div>' +
+      '<div class="meta">' + rowMeta(e) + '</div></div>' + rowRight(e) + '</div>';
+    if (openKey === key) html += '<div class="panel" id="openPanel"><div class="ph">加载图形中…</div></div>';
+    return html;
   }).join('');
-  statEl.textContent = '共 ' + rows.length + ' 个标的（' + countByKind(rows) + '）';
-}
-var crossState = { macdGold: {p: 'day'}, macdDead: {p: 'day'}, kdjGold: {p: 'day'}, kdjDead: {p: 'day'} };
-Array.prototype.forEach.call(document.querySelectorAll('.tabs[data-card]'), function(tabsEl) {
-  var card = tabsEl.getAttribute('data-card');
-  Array.prototype.forEach.call(tabsEl.querySelectorAll('button'), function(btn) {
-    btn.onclick = function() {
-      crossState[card].p = btn.getAttribute('data-p');
-      Array.prototype.forEach.call(tabsEl.querySelectorAll('button'), function(b) { b.classList.remove('on'); });
-      btn.classList.add('on');
-      renderCross(card);
-    };
+  Array.prototype.forEach.call($('listBox').querySelectorAll('.nrow'), function(el) {
+    el.onclick = function() { toggleRow(rows[Number(el.getAttribute('data-i'))]); };
   });
-});
-function renderAll() {
-  renderNear();
-  ['macdGold','macdDead','kdjGold','kdjDead'].forEach(renderCross);
+  $('moreBtn').style.display = rows.length > shown ? 'block' : 'none';
+  $('statLine').textContent = '共 ' + rows.length + ' 只 ETF' + (rows.length > shown ? ' · 已显示 ' + shown : '');
+  if (openKey) {
+    var oe = null;
+    rows.forEach(function(e) { if (e.secid + '|' + curPeriod + '|' + curList === openKey) oe = e; });
+    if (oe) loadChart(oe);
+  }
 }
+function toggleRow(e) {
+  var key = e.secid + '|' + curPeriod + '|' + curList;
+  openKey = openKey === key ? null : key;
+  renderList();
+}
+$('moreBtn').onclick = function() { shown += PAGE; renderList(); };
+Array.prototype.forEach.call($('listTabs').querySelectorAll('button'), function(btn) {
+  btn.onclick = function() {
+    curList = btn.getAttribute('data-l'); shown = PAGE; openKey = null;
+    Array.prototype.forEach.call($('listTabs').querySelectorAll('button'), function(b) { b.classList.remove('on'); });
+    btn.classList.add('on');
+    renderList();
+  };
+});
+Array.prototype.forEach.call($('periodTabs').querySelectorAll('button'), function(btn) {
+  btn.onclick = function() {
+    curPeriod = btn.getAttribute('data-p'); shown = PAGE; openKey = null;
+    Array.prototype.forEach.call($('periodTabs').querySelectorAll('button'), function(b) { b.classList.remove('on'); });
+    btn.classList.add('on');
+    renderList();
+  };
+});
+
+/* ---------- K 线拉取（东方财富优先，同花顺备选） ---------- */
+function fetchJSON(url, timeoutMs) {
+  return new Promise(function(resolve, reject) {
+    var ctl = new AbortController();
+    var t = setTimeout(function() { ctl.abort(); }, timeoutMs || 12000);
+    fetch(url, { signal: ctl.signal }).then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function(j) { clearTimeout(t); resolve(j); }).catch(function(e) { clearTimeout(t); reject(e); });
+  });
+}
+function fetchTHSJsonp(code, periodCode, lastN) {
+  return new Promise(function(resolve, reject) {
+    var cbName = 'quotebridge_v6_line_hs_' + code + '_' + periodCode + '_last' + lastN;
+    var s = document.createElement('script');
+    var timer = setTimeout(function() { cleanup(); reject(new Error('ths timeout')); }, 12000);
+    function cleanup() {
+      clearTimeout(timer);
+      try { delete window[cbName]; } catch (e) { window[cbName] = undefined; }
+      if (s.parentNode) s.parentNode.removeChild(s);
+    }
+    window[cbName] = function(j) { cleanup(); resolve(j); };
+    s.onerror = function() { cleanup(); reject(new Error('ths error')); };
+    s.src = 'https://d.10jqka.com.cn/v6/line/hs_' + code + '/' + periodCode + '/last' + lastN + '.js';
+    document.head.appendChild(s);
+  });
+}
+async function fetchBars(e, period) {
+  var beg = new Date(Date.now() - BEG[period] * 864e5);
+  var begS = beg.getFullYear() + String(beg.getMonth() + 1).padStart(2, '0') + String(beg.getDate()).padStart(2, '0');
+  var url = 'https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=' + e.secid +
+    '&fields1=f1,f2&fields2=f51,f52,f53,f54,f55&klt=' + KLT[period] + '&fqt=1&beg=' + begS + '&end=20500101';
+  for (var att = 0; att < 2; att++) {
+    try {
+      var j = await fetchJSON(url, 12000);
+      var kl = (j && j.data && j.data.klines) || [];
+      if (kl.length >= 40) return kl.map(function(s) { var p = s.split(','); return { d: p[0], c: +p[1 + 1], h: +p[3], l: +p[4], o: +p[1] }; });
+    } catch (err) { /* 重试/转备选 */ }
+    await new Promise(function(rs) { setTimeout(rs, 900); });
+  }
+  for (var att2 = 0; att2 < 2; att2++) {
+    try {
+      var tj = await fetchTHSJsonp(e.code, THS_P[period], THS_N[period]);
+      var data = (tj && tj.data) || '';
+      var bars = data.split(';').filter(Boolean).map(function(s) {
+        var p = s.split(',');
+        return { d: p[0].slice(0, 4) + '-' + p[0].slice(4, 6) + '-' + p[0].slice(6, 8), o: +p[1], h: +p[2], l: +p[3], c: +p[4] };
+      }).filter(function(b) { return b.c > 0; });
+      if (bars.length >= 40) return bars;
+    } catch (err2) { /* 继续重试 */ }
+    await new Promise(function(rs) { setTimeout(rs, 900); });
+  }
+  return null;
+}
+
+/* ---------- 指标与画图 ---------- */
+function ema(arr, n) {
+  var k = 2 / (n + 1), out = [], prev = null;
+  for (var i = 0; i < arr.length; i++) { prev = prev === null ? arr[i] : arr[i] * k + prev * (1 - k); out.push(prev); }
+  return out;
+}
+function macdCalc(closes) {
+  var e12 = ema(closes, 12), e26 = ema(closes, 26);
+  var dif = closes.map(function(_, i) { return e12[i] - e26[i]; });
+  var dea = ema(dif, 9);
+  var bar = dif.map(function(v, i) { return 2 * (v - dea[i]); });
+  return { dif: dif, dea: dea, bar: bar };
+}
+function kdjCalc(bars) {
+  var K = [], D = [], J = [], k = 50, d = 50;
+  for (var i = 0; i < bars.length; i++) {
+    var s = Math.max(0, i - 8), hh = -Infinity, ll = Infinity;
+    for (var j = s; j <= i; j++) { hh = Math.max(hh, bars[j].h); ll = Math.min(ll, bars[j].l); }
+    var rsv = hh === ll ? 50 : (bars[i].c - ll) / (hh - ll) * 100;
+    k = 2 / 3 * k + 1 / 3 * rsv;
+    d = 2 / 3 * d + 1 / 3 * k;
+    K.push(k); D.push(d); J.push(3 * k - 2 * d);
+  }
+  return { K: K, D: D, J: J };
+}
+function chartMACD(dif, dea, bar, h) {
+  var w = 720, pad = 6;
+  var all = dif.concat(dea).concat(bar);
+  var mn = Infinity, mx = -Infinity, i, v;
+  for (i = 0; i < all.length; i++) { mn = Math.min(mn, all[i]); mx = Math.max(mx, all[i]); }
+  if (mx === mn) { mx += 1; mn -= 1; }
+  var X = function(i) { return pad + (w - 2 * pad) * i / (dif.length - 1); };
+  var Y = function(v) { return pad + (h - 2 * pad) * (1 - (v - mn) / (mx - mn)); };
+  var bw = Math.max(1, (w - 2 * pad) / dif.length - 0.4);
+  var svg = '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="height:' + h + 'px">';
+  svg += '<line x1="0" y1="' + Y(0).toFixed(1) + '" x2="' + w + '" y2="' + Y(0).toFixed(1) + '" stroke="#d8d8de" stroke-width="1"/>';
+  bar.forEach(function(v, i) {
+    var y0 = Y(0), y1 = Y(v);
+    svg += '<rect x="' + (X(i) - bw / 2).toFixed(1) + '" y="' + Math.min(y0, y1).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + Math.max(1, Math.abs(y1 - y0)).toFixed(1) + '" fill="' + (v >= 0 ? '#d43a2f' : '#1a9e57') + '" opacity="0.55"/>';
+  });
+  function line(vals, color) {
+    var d = '';
+    vals.forEach(function(v, i) { d += (d ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1) + ' '; });
+    return '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="1.6" vector-effect="non-scaling-stroke"/>';
+  }
+  svg += line(dif, '#55555e') + line(dea, '#2f4fd0');
+  svg += '</svg>';
+  return svg;
+}
+function chartLines(seriesList, h) {
+  var w = 720, pad = 6, all = [];
+  seriesList.forEach(function(s) { all = all.concat(s.vals); });
+  var mn = Infinity, mx = -Infinity, i;
+  for (i = 0; i < all.length; i++) { var v = all[i]; if (v === null || v === undefined) continue; mn = Math.min(mn, v); mx = Math.max(mx, v); }
+  if (!isFinite(mn)) return '';
+  if (mx === mn) { mx += 1; mn -= 1; }
+  var X = function(i) { return pad + (w - 2 * pad) * i / (seriesList[0].vals.length - 1); };
+  var Y = function(v) { return pad + (h - 2 * pad) * (1 - (v - mn) / (mx - mn)); };
+  var svg = '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="height:' + h + 'px">';
+  if (mn < 0 && mx > 0) svg += '<line x1="0" y1="' + Y(0).toFixed(1) + '" x2="' + w + '" y2="' + Y(0).toFixed(1) + '" stroke="#d8d8de" stroke-width="1"/>';
+  seriesList.forEach(function(s) {
+    var d = '';
+    s.vals.forEach(function(v, i) { if (v === null || v === undefined) return; d += (d ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1) + ' '; });
+    svg += '<path d="' + d + '" fill="none" stroke="' + s.color + '" stroke-width="1.6" vector-effect="non-scaling-stroke"/>';
+  });
+  svg += '</svg>';
+  return svg;
+}
+async function loadChart(e) {
+  var panel = $('openPanel');
+  if (!panel) return;
+  var period = curList === 'near' ? 'day' : curPeriod;
+  var cacheKey = e.secid + '|' + period;
+  try {
+    var bars = chartCache[cacheKey];
+    if (!bars) {
+      bars = await fetchBars(e, period);
+      if (!bars) { panel.innerHTML = '<div class="ph">图形加载失败，点行收起后再打开重试。</div>'; return; }
+      chartCache[cacheKey] = bars;
+    }
+    if (!$('openPanel')) return;
+    var N = 60, last = bars.length - 1;
+    var sl = function(a) { return a.slice(-N); };
+    var note = '最近 60 根 · ' + bars[Math.max(0, last - N + 1)].d + ' ~ ' + bars[last].d + ' · 点行可收起';
+    if (isKdj()) {
+      var KJ = kdjCalc(bars);
+      panel.innerHTML = '<div class="ph">KDJ (9, 3, 3)：K:<b>' + fmt(KJ.K[last], 2) + '</b> D:<b>' + fmt(KJ.D[last], 2) + '</b> J:<b>' + fmt(KJ.J[last], 2) + '</b></div>' +
+        chartLines([{ vals: sl(KJ.K), color: '#e8a13a' }, { vals: sl(KJ.D), color: '#2f6fd0' }, { vals: sl(KJ.J), color: '#b05fd0' }], 110) +
+        '<div class="pnote">' + note + '</div>';
+    } else {
+      var M = macdCalc(bars.map(function(b) { return b.c; }));
+      panel.innerHTML = '<div class="ph">MACD (12, 26, 9)：MACD:<b>' + fv(M.bar[last]) + '</b> DIFF:<b>' + fv(M.dif[last]) + '</b> DEA:<b>' + fv(M.dea[last]) + '</b></div>' +
+        chartMACD(sl(M.dif), sl(M.dea), sl(M.bar), 120) +
+        '<div class="pnote">' + note + '</div>';
+    }
+  } catch (err) {
+    if ($('openPanel')) $('openPanel').innerHTML = '<div class="ph">图形加载失败，点行收起后再打开重试。</div>';
+  }
+}
+
+/* ---------- 启动 ---------- */
 fetch('./macd-cross.json?t=' + Date.now()).then(function(r) { return r.json(); }).then(function(j) {
   DATA = j;
+  shown = PAGE;
   $('dateBadge').textContent = '名单日期 ' + (j.date || '—');
   $('dateBadge').classList.remove('load');
-  var per = j.periods || {};
-  var wk = per.week || {}, mo = per.month || {};
-  $('subInfo').textContent = '名单日期 ' + (j.date || '—') + ' · 日线扫描 ' + (j.scanned || 0) +
-    ' · 周线扫描 ' + (wk.scanned || 0) + ' · 月线扫描 ' + (mo.scanned || 0) +
-    '（ETF+板块+指数）· 生成于 ' + (j.generated_at || '—') + ' · 工作日 16:05 自动更新';
-  renderAll();
+  $('subInfo').textContent = '名单日期 ' + (j.date || '—') + ' · 只含 ETF · 生成于 ' + (j.generated_at || '—') + ' · 工作日收盘后更新';
+  renderList();
 }).catch(function() {
   $('subInfo').textContent = '名单加载失败，请稍后刷新重试。';
-  $('nearList').innerHTML = '<div class="stat">加载失败</div>';
+  $('listBox').innerHTML = '<div class="stat">加载失败</div>';
 });
 </script>
 </body>
