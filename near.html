@@ -8,7 +8,7 @@
   :root { --up:#d43a2f; --down:#1a9e57; --ink:#1c1e21; --sub:#8a8f98; --line:#ececf0; --bg:#f6f6f8; --card:#fff; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   body { margin:0; font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--ink); }
-  .wrap { max-width:860px; margin:0 auto; padding:14px 12px 40px; }
+  .wrap { max-width:1240px; margin:0 auto; padding:14px 12px 40px; }
   header { padding:6px 2px 4px; }
   h1 { font-size:20px; margin:0 0 4px; display:inline-block; }
   .badge { display:inline-block; vertical-align:2px; margin-left:8px; font-size:11px; padding:2px 8px; border-radius:99px; background:#e8f6ee; color:var(--down); }
@@ -20,10 +20,11 @@
   .tabs { display:flex; gap:8px; flex-wrap:wrap; }
   .tabs button { border:1px solid var(--line); background:#fff; border-radius:99px; padding:6px 13px; font-size:13.5px; color:var(--ink); }
   .tabs button.on { background:#1c1e21; color:#fff; border-color:#1c1e21; }
-  .tabs.sub2 { margin-top:8px; }
-  .tabs.sub2 button { padding:4px 12px; font-size:12.5px; }
-  .tabs.sub2 button.on { background:#5a5f6a; border-color:#5a5f6a; }
   .tip { font-size:12px; color:var(--sub); margin:10px 0 2px; }
+  .cols { display:grid; grid-template-columns:repeat(auto-fit, minmax(290px, 1fr)); gap:14px; margin-top:6px; }
+  .colh { font-size:15px; font-weight:600; padding:4px 2px 2px; }
+  .colh small { color:var(--sub); font-weight:400; font-size:12px; margin-left:6px; }
+  .colh .prov { color:#b97d1e; font-weight:400; font-size:11.5px; margin-left:6px; }
   .nrow { display:flex; justify-content:space-between; align-items:center; padding:10px 2px; border-top:1px solid var(--line); cursor:pointer; }
   .nrow .nm { font-size:14.5px; }
   .nrow .nm small { color:var(--sub); font-size:11.5px; margin-left:6px; }
@@ -58,18 +59,11 @@
       <button data-l="kg">KDJ金叉</button>
       <button data-l="kd">KDJ死叉</button>
     </div>
-    <div class="tabs sub2" id="periodTabs">
-      <button data-p="day" class="on">日线</button>
-      <button data-p="week">周线</button>
-      <button data-p="month">月线</button>
-    </div>
-    <div class="tip" id="tipLine">点任意一行，看它的 MACD 图形（最近 60 根）。</div>
-    <div id="listBox"><div class="stat">加载中…</div></div>
-    <button class="more" id="moreBtn" style="display:none">显示更多</button>
-    <div class="stat" id="statLine"></div>
+    <div class="tip" id="tipLine">点任意一行，看它的图形（最近 60 根）。</div>
+    <div class="cols" id="colsBox"><div class="stat">加载中…</div></div>
   </section>
 
-  <div class="foot">只含全市场 ETF（板块、指数不列）。名单每个工作日收盘后自动更新；点开的图形为点开时实时拉取的 K 线计算，盘中会跳动、收盘定格。仅列技术形态，不构成买卖建议。</div>
+  <div class="foot">只含全市场 ETF（板块、指数不列）。日线、周线、月线三列同页并列；周线/月线按最近一根 K 线计算，本周/本月没走完，标了「未定格」，周五/月末收盘才定格。名单每个工作日收盘后自动更新；点开的图形为点开时实时拉取的 K 线计算。仅列技术形态，不构成买卖建议。</div>
 </div>
 <script>
 var $ = function(id) { return document.getElementById(id); };
@@ -84,25 +78,28 @@ function pctHtml(p) {
 
 /* ---------- 状态与数据 ---------- */
 var DATA = null;
-var curList = 'near', curPeriod = 'day', shown = 0;
+var curList = 'near';
 var PAGE = 60;
-var openKey = null, chartCache = {};
+var shownMap = { day: PAGE, week: PAGE, month: PAGE };
+var openKey = null, openPeriod = 'day', chartCache = {};
 var KLT = { day: 101, week: 102, month: 103 };
 var BEG = { day: 500, week: 1700, month: 3300 };
 var THS_P = { day: '01', week: '11', month: '21' };
 var THS_N = { day: 500, week: 300, month: 200 };
+var P_LABEL = { day: '日线', week: '周线', month: '月线' };
 
-function curRows() {
+function rowsFor(list, p) {
   if (!DATA) return [];
   var per = DATA.periods || {};
   var rows;
-  if (curList === 'near') rows = DATA.near || [];
-  else if (curList === 'mg') rows = curPeriod === 'day' ? (DATA.golden || []) : ((per[curPeriod] || {}).macd_golden || []);
-  else if (curList === 'md') rows = curPeriod === 'day' ? (DATA.death || []) : ((per[curPeriod] || {}).macd_death || []);
-  else if (curList === 'kg') rows = curPeriod === 'day' ? (DATA.kdj_golden || []) : ((per[curPeriod] || {}).kdj_golden || []);
-  else rows = curPeriod === 'day' ? (DATA.kdj_death || []) : ((per[curPeriod] || {}).kdj_death || []);
+  if (list === 'near') rows = DATA.near || [];
+  else if (list === 'mg') rows = p === 'day' ? (DATA.golden || []) : ((per[p] || {}).macd_golden || []);
+  else if (list === 'md') rows = p === 'day' ? (DATA.death || []) : ((per[p] || {}).macd_death || []);
+  else if (list === 'kg') rows = p === 'day' ? (DATA.kdj_golden || []) : ((per[p] || {}).kdj_golden || []);
+  else rows = p === 'day' ? (DATA.kdj_death || []) : ((per[p] || {}).kdj_death || []);
   return rows.filter(function(e) { return e.kind === 'ETF'; });
 }
+function periodsShown() { return curList === 'near' ? ['day'] : ['day', 'week', 'month']; }
 function isKdj() { return curList === 'kg' || curList === 'kd'; }
 function rowMeta(e) {
   if (curList === 'near') return 'DIF ' + fv(e.dif) + ' · DEA ' + fv(e.dea) + ' · 约 ' + (e.days == null ? '—' : e.days) + ' 天';
@@ -114,54 +111,56 @@ function rowRight(e) {
   return '<div class="rt">' + pctHtml(e.pct) + g + '</div>';
 }
 function renderList() {
-  var rows = curRows();
-  $('periodTabs').style.display = curList === 'near' ? 'none' : 'flex';
   $('tipLine').textContent = curList === 'near'
-    ? '即将金叉（日线）：DIF 还没上穿 DEA、差距 ≤0.5% 且在收窄。点任意一行看图形（最近 60 根）。'
-    : ('点任意一行看' + (isKdj() ? ' KDJ ' : ' MACD ') + '图形（最近 60 根）。' + (curPeriod === 'day' ? '' : '本周期还没走完，图形会变，周期收盘才定格。'));
-  if (!rows.length) {
-    $('listBox').innerHTML = '<div class="stat">该名单今日暂无 ETF</div>';
-    $('moreBtn').style.display = 'none';
-    $('statLine').textContent = '';
-    return;
-  }
-  var part = rows.slice(0, shown);
-  $('listBox').innerHTML = part.map(function(e, i) {
-    var key = e.secid + '|' + curPeriod + '|' + curList;
-    var html = '<div class="nrow" data-i="' + i + '"><div><div class="nm">' + esc(e.name) + '<small>' + esc(e.code) + '</small></div>' +
-      '<div class="meta">' + rowMeta(e) + '</div></div>' + rowRight(e) + '</div>';
-    if (openKey === key) html += '<div class="panel" id="openPanel"><div class="ph">加载图形中…</div></div>';
-    return html;
-  }).join('');
-  Array.prototype.forEach.call($('listBox').querySelectorAll('.nrow'), function(el) {
-    el.onclick = function() { toggleRow(rows[Number(el.getAttribute('data-i'))]); };
+    ? '即将金叉（日线）：DIF 还没上穿 DEA、差距 ≤0.5% 且在收窄。点任意一行看 MACD 图形（最近 60 根）。'
+    : ('日线、周线、月线三列并列。点任意一行看' + (isKdj() ? ' KDJ ' : ' MACD ') + '图形（最近 60 根）。');
+  var html = '';
+  periodsShown().forEach(function(p) {
+    var rows = rowsFor(curList, p);
+    var shown = shownMap[p];
+    html += '<div class="col"><div class="colh">' + P_LABEL[p] + '<small>共 ' + rows.length + ' 只</small>' +
+      (p === 'day' ? '' : '<span class="prov">未定格</span>') + '</div>';
+    if (!rows.length) {
+      html += '<div class="stat">暂无 ETF</div>';
+    } else {
+      html += rows.slice(0, shown).map(function(e, i) {
+        var key = e.secid + '|' + p + '|' + curList;
+        var h = '<div class="nrow" data-p="' + p + '" data-i="' + i + '"><div><div class="nm">' + esc(e.name) + '<small>' + esc(e.code) + '</small></div>' +
+          '<div class="meta">' + rowMeta(e) + '</div></div>' + rowRight(e) + '</div>';
+        if (openKey === key) h += '<div class="panel" id="openPanel"><div class="ph">加载图形中…</div></div>';
+        return h;
+      }).join('');
+      if (rows.length > shown) html += '<button class="more" data-p="' + p + '">显示更多（剩 ' + (rows.length - shown) + ' 只）</button>';
+    }
+    html += '</div>';
   });
-  $('moreBtn').style.display = rows.length > shown ? 'block' : 'none';
-  $('statLine').textContent = '共 ' + rows.length + ' 只 ETF' + (rows.length > shown ? ' · 已显示 ' + shown : '');
+  $('colsBox').innerHTML = html;
+  Array.prototype.forEach.call($('colsBox').querySelectorAll('.nrow'), function(el) {
+    el.onclick = function() {
+      var p = el.getAttribute('data-p');
+      toggleRow(rowsFor(curList, p)[Number(el.getAttribute('data-i'))], p);
+    };
+  });
+  Array.prototype.forEach.call($('colsBox').querySelectorAll('.more'), function(el) {
+    el.onclick = function() { shownMap[el.getAttribute('data-p')] += PAGE; renderList(); };
+  });
   if (openKey) {
     var oe = null;
-    rows.forEach(function(e) { if (e.secid + '|' + curPeriod + '|' + curList === openKey) oe = e; });
-    if (oe) loadChart(oe);
+    rowsFor(curList, openPeriod).forEach(function(e) { if (e.secid + '|' + openPeriod + '|' + curList === openKey) oe = e; });
+    if (oe) loadChart(oe, openPeriod);
   }
 }
-function toggleRow(e) {
-  var key = e.secid + '|' + curPeriod + '|' + curList;
-  openKey = openKey === key ? null : key;
+function toggleRow(e, p) {
+  var key = e.secid + '|' + p + '|' + curList;
+  if (openKey === key) { openKey = null; } else { openKey = key; openPeriod = p; }
   renderList();
 }
-$('moreBtn').onclick = function() { shown += PAGE; renderList(); };
 Array.prototype.forEach.call($('listTabs').querySelectorAll('button'), function(btn) {
   btn.onclick = function() {
-    curList = btn.getAttribute('data-l'); shown = PAGE; openKey = null;
+    curList = btn.getAttribute('data-l');
+    shownMap = { day: PAGE, week: PAGE, month: PAGE };
+    openKey = null;
     Array.prototype.forEach.call($('listTabs').querySelectorAll('button'), function(b) { b.classList.remove('on'); });
-    btn.classList.add('on');
-    renderList();
-  };
-});
-Array.prototype.forEach.call($('periodTabs').querySelectorAll('button'), function(btn) {
-  btn.onclick = function() {
-    curPeriod = btn.getAttribute('data-p'); shown = PAGE; openKey = null;
-    Array.prototype.forEach.call($('periodTabs').querySelectorAll('button'), function(b) { b.classList.remove('on'); });
     btn.classList.add('on');
     renderList();
   };
@@ -203,7 +202,7 @@ async function fetchBars(e, period) {
     try {
       var j = await fetchJSON(url, 12000);
       var kl = (j && j.data && j.data.klines) || [];
-      if (kl.length >= 40) return kl.map(function(s) { var p = s.split(','); return { d: p[0], c: +p[1 + 1], h: +p[3], l: +p[4], o: +p[1] }; });
+      if (kl.length >= 40) return kl.map(function(s) { var p = s.split(','); return { d: p[0], o: +p[1], c: +p[2], h: +p[3], l: +p[4] }; });
     } catch (err) { /* 重试/转备选 */ }
     await new Promise(function(rs) { setTimeout(rs, 900); });
   }
@@ -250,7 +249,7 @@ function kdjCalc(bars) {
 function chartMACD(dif, dea, bar, h) {
   var w = 720, pad = 6;
   var all = dif.concat(dea).concat(bar);
-  var mn = Infinity, mx = -Infinity, i, v;
+  var mn = Infinity, mx = -Infinity, i;
   for (i = 0; i < all.length; i++) { mn = Math.min(mn, all[i]); mx = Math.max(mx, all[i]); }
   if (mx === mn) { mx += 1; mn -= 1; }
   var X = function(i) { return pad + (w - 2 * pad) * i / (dif.length - 1); };
@@ -290,10 +289,9 @@ function chartLines(seriesList, h) {
   svg += '</svg>';
   return svg;
 }
-async function loadChart(e) {
+async function loadChart(e, period) {
   var panel = $('openPanel');
   if (!panel) return;
-  var period = curList === 'near' ? 'day' : curPeriod;
   var cacheKey = e.secid + '|' + period;
   try {
     var bars = chartCache[cacheKey];
@@ -305,7 +303,7 @@ async function loadChart(e) {
     if (!$('openPanel')) return;
     var N = 60, last = bars.length - 1;
     var sl = function(a) { return a.slice(-N); };
-    var note = '最近 60 根 · ' + bars[Math.max(0, last - N + 1)].d + ' ~ ' + bars[last].d + ' · 点行可收起';
+    var note = P_LABEL[period] + ' · 最近 60 根 · ' + bars[Math.max(0, last - N + 1)].d + ' ~ ' + bars[last].d + ' · 点行可收起';
     if (isKdj()) {
       var KJ = kdjCalc(bars);
       panel.innerHTML = '<div class="ph">KDJ (9, 3, 3)：K:<b>' + fmt(KJ.K[last], 2) + '</b> D:<b>' + fmt(KJ.D[last], 2) + '</b> J:<b>' + fmt(KJ.J[last], 2) + '</b></div>' +
@@ -325,14 +323,13 @@ async function loadChart(e) {
 /* ---------- 启动 ---------- */
 fetch('./macd-cross.json?t=' + Date.now()).then(function(r) { return r.json(); }).then(function(j) {
   DATA = j;
-  shown = PAGE;
   $('dateBadge').textContent = '名单日期 ' + (j.date || '—');
   $('dateBadge').classList.remove('load');
-  $('subInfo').textContent = '名单日期 ' + (j.date || '—') + ' · 只含 ETF · 生成于 ' + (j.generated_at || '—') + ' · 工作日收盘后更新';
+  $('subInfo').textContent = '名单日期 ' + (j.date || '—') + ' · 只含 ETF · 生成于 ' + (j.created_at || j.generated_at || '—') + ' · 工作日收盘后更新';
   renderList();
 }).catch(function() {
   $('subInfo').textContent = '名单加载失败，请稍后刷新重试。';
-  $('listBox').innerHTML = '<div class="stat">加载失败</div>';
+  $('colsBox').innerHTML = '<div class="stat">加载失败</div>';
 });
 </script>
 </body>
