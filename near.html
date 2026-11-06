@@ -16,29 +16,26 @@
   .nav { font-size:13px; margin-top:6px; }
   .nav a { color:#2f6fd0; text-decoration:none; margin-right:14px; }
   .sub { color:var(--sub); font-size:12.5px; margin-top:6px; }
+  .switch { display:flex; gap:10px; margin-top:12px; }
+  .switch button { flex:1; border:1px solid var(--line); background:#fff; border-radius:12px; padding:12px 0; font-size:16px; font-weight:600; color:var(--ink); }
+  .switch button.on-g { background:var(--up); border-color:var(--up); color:#fff; }
+  .switch button.on-d { background:var(--down); border-color:var(--down); color:#fff; }
   .card { background:var(--card); border-radius:14px; padding:12px; margin-top:12px; box-shadow:0 1px 3px rgba(20,20,40,.05); }
-  .card h2 { font-size:16.5px; margin:2px 0 2px; }
-  .card h2 small { color:var(--sub); font-weight:400; font-size:12px; margin-left:6px; }
-  .tip { font-size:12px; color:var(--sub); margin:2px 0 4px; }
-  .nrow { display:flex; justify-content:space-between; align-items:center; padding:9px 2px; border-top:1px solid var(--line); cursor:pointer; }
-  .nrow .nm { font-size:14.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .nrow .nm small { color:var(--sub); font-size:11.5px; margin-left:6px; }
-  .nrow .meta { color:var(--sub); font-size:12px; margin-top:2px; font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .nrow .rt { text-align:right; flex:none; margin-left:10px; }
-  .nrow .eta { font-size:14px; font-weight:600; color:#b97d1e; }
-  .nrow .etad { font-size:11.5px; color:var(--sub); margin-top:1px; }
-  .duo { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
-  .panel { background:var(--card); border-radius:14px; padding:10px; box-shadow:0 1px 3px rgba(20,20,40,.05); min-width:0; }
-  .panel h2 { font-size:15.5px; margin:2px 0 2px; }
-  .panel .tip { font-size:11.5px; }
-  .seg { display:flex; gap:6px; margin:6px 0 2px; }
-  .seg button { flex:1; border:1px solid var(--line); background:#fff; border-radius:99px; padding:4px 0; font-size:12.5px; color:var(--ink); }
-  .seg button.on { background:#1c1e21; color:#fff; border-color:#1c1e21; }
-  .prow { padding:8px 2px; border-top:1px solid var(--line); cursor:pointer; }
-  .prow .nm { font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .prow .meta { color:var(--sub); font-size:11px; margin-top:1px; font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .bhead { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+  .bhead h2 { font-size:16.5px; margin:2px 0; }
+  .sortseg { display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--sub); }
+  .sortseg button { border:1px solid var(--line); background:#fff; border-radius:99px; padding:5px 13px; font-size:12.5px; color:var(--ink); }
+  .sortseg button.on { background:#1c1e21; color:#fff; border-color:#1c1e21; }
+  .tip { font-size:12px; color:var(--sub); margin:4px 0 2px; }
+  .cols { display:grid; grid-template-columns:repeat(auto-fit, minmax(290px, 1fr)); gap:14px; margin-top:4px; }
+  .colh { font-size:15px; font-weight:600; padding:4px 2px 2px; }
+  .colh small { color:var(--sub); font-weight:400; font-size:12px; margin-left:6px; }
+  .colh .prov { color:#b97d1e; font-weight:400; font-size:11.5px; margin-left:6px; }
+  .prow { padding:9px 2px; border-top:1px solid var(--line); cursor:pointer; }
+  .prow .nm { font-size:14.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .prow .meta { color:var(--sub); font-size:11.5px; margin-top:2px; font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .stat { text-align:center; color:var(--sub); font-size:12px; padding:12px 0 6px; }
-  .more { display:block; width:100%; margin-top:6px; border:1px solid var(--line); background:#fff; border-radius:10px; padding:8px; font-size:13px; color:var(--ink); }
+  .more { display:block; width:100%; margin-top:6px; border:1px solid var(--line); background:#fff; border-radius:10px; padding:9px; font-size:13.5px; color:var(--ink); }
   .foot { color:var(--sub); font-size:12px; line-height:1.7; margin-top:14px; padding:0 4px; }
   .up { color:var(--up); } .down { color:var(--down); }
   /* ---------- 详情页 ---------- */
@@ -50,6 +47,9 @@
   #dClose { border:1px solid var(--line); background:#fff; border-radius:99px; padding:6px 16px; font-size:13.5px; color:var(--ink); flex:none; }
   #dQuote { color:var(--sub); font-size:13px; margin-top:6px; font-variant-numeric:tabular-nums; }
   #dQuote b { color:var(--ink); font-weight:600; }
+  .seg { display:flex; gap:6px; margin:10px 0 2px; max-width:340px; }
+  .seg button { flex:1; border:1px solid var(--line); background:#fff; border-radius:99px; padding:5px 0; font-size:12.5px; color:var(--ink); }
+  .seg button.on { background:#1c1e21; color:#fff; border-color:#1c1e21; }
   .dcard { background:#fff; border-radius:14px; padding:12px; margin-top:12px; box-shadow:0 1px 3px rgba(20,20,40,.05); }
   .cap { font-size:13px; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1.55; }
   .cap .lb { display:inline-block; background:#eef1f5; border-radius:6px; padding:1px 8px; font-size:12.5px; margin-right:8px; }
@@ -65,40 +65,24 @@
     <div class="sub" id="subInfo">正在加载名单…</div>
   </header>
 
-  <section class="card">
-    <h2>即将金叉（日线）<small>按距离金叉的日期从近到远</small></h2>
-    <div class="tip">DIF 还没上穿 DEA、差距 ≤0.5% 且在收窄的 ETF；预计日期按当前收窄速度粗估。点任意一只看它的图。</div>
-    <div id="nearList"><div class="stat">加载中…</div></div>
-    <button class="more" id="nearMore" style="display:none">显示更多</button>
-    <div class="stat" id="nearStat"></div>
-  </section>
-
-  <div class="duo">
-    <section class="panel">
-      <h2>MACD 金叉</h2>
-      <div class="tip">刚金叉的排前面（离交叉点最近）</div>
-      <div class="seg" id="goldSeg">
-        <button data-p="day" class="on">日K</button>
-        <button data-p="week">周K</button>
-        <button data-p="month">月K</button>
-      </div>
-      <div id="goldList"><div class="stat">加载中…</div></div>
-      <button class="more" id="goldMore" style="display:none">显示更多</button>
-    </section>
-    <section class="panel">
-      <h2>MACD 死叉</h2>
-      <div class="tip">刚死叉的排前面（离交叉点最近）</div>
-      <div class="seg" id="deadSeg">
-        <button data-p="day" class="on">日K</button>
-        <button data-p="week">周K</button>
-        <button data-p="month">月K</button>
-      </div>
-      <div id="deadList"><div class="stat">加载中…</div></div>
-      <button class="more" id="deadMore" style="display:none">显示更多</button>
-    </section>
+  <div class="switch">
+    <button id="swGold" class="on-g">MACD 金叉</button>
+    <button id="swDead">MACD 死叉</button>
   </div>
 
-  <div class="foot">只含全市场 ETF。列表只出文字，打开快；MACD、KDJ 图点进每只 ETF 的详情里看（同花顺式：K线 + MACD + KDJ 三层）。周K/月K 按最近一根 K 线计算，本周/本月没走完，周五/月末收盘才定格。名单每个工作日收盘后自动更新；量、额与图形为打开时拉取的最新数据。仅列技术形态，不构成买卖建议。</div>
+  <section class="card">
+    <div class="bhead">
+      <h2 id="boardTitle">MACD 金叉</h2>
+      <div class="sortseg"><span id="sortLabel">距金叉点</span>
+        <button id="sortNear" class="on">近 → 远</button>
+        <button id="sortFar">远 → 近</button>
+      </div>
+    </div>
+    <div class="tip" id="boardTip">点任意一只看它的图（K线 + MACD + KDJ）。</div>
+    <div class="cols" id="boardCols"><div class="stat">加载中…</div></div>
+  </section>
+
+  <div class="foot">只含全市场 ETF。金叉、死叉分开两个页面，用上方按钮切换；每页里日K、周K、月K 三列并列，可按距交叉点近→远 / 远→近自己切换排序。周K/月K 按最近一根 K 线计算，本周/本月没走完，标了「未定格」，周五/月末收盘才定格。名单每个工作日收盘后自动更新；量、额与图形为打开时拉取的最新数据。仅列技术形态，不构成买卖建议。</div>
 </div>
 
 <div id="detail">
@@ -108,7 +92,7 @@
       <button id="dClose">返回</button>
     </div>
     <div id="dQuote"></div>
-    <div class="seg" id="dSeg" style="max-width:340px">
+    <div class="seg" id="dSeg">
       <button data-p="day" class="on">日K</button>
       <button data-p="week">周K</button>
       <button data-p="month">月K</button>
@@ -126,9 +110,10 @@ function cls(v) { return (v === null || v === undefined || isNaN(v)) ? '' : (v >
 
 /* ---------- 数据与状态 ---------- */
 var DATA = null, QUOTES = {};
-var nearShown = 40;
-var panelPeriod = { golden: 'day', death: 'day' };
-var panelShown = { golden: { day: 30, week: 30, month: 30 }, death: { day: 30, week: 30, month: 30 } };
+var curMode = 'golden';
+var sortDir = { golden: 'near', death: 'near' };
+var PAGE = 40;
+var shownMap = { golden: { day: PAGE, week: PAGE, month: PAGE }, death: { day: PAGE, week: PAGE, month: PAGE } };
 var chartCache = {};
 var KLT = { day: 101, week: 102, month: 103 };
 var BEG = { day: 500, week: 1700, month: 3300 };
@@ -136,94 +121,74 @@ var THS_P = { day: '01', week: '11', month: '21' };
 var THS_N = { day: 500, week: 300, month: 200 };
 var P_LABEL = { day: '日K', week: '周K', month: '月K' };
 
-function etfOnly(rows) { return (rows || []).filter(function(e) { return e.kind === 'ETF'; }); }
-function nearRows() {
-  var rows = etfOnly(DATA && DATA.near);
-  rows.sort(function(a, b) {
-    var da = a.days == null ? 999 : a.days, db = b.days == null ? 999 : b.days;
-    if (da !== db) return da - db;
-    return (a.gap_pct || 0) - (b.gap_pct || 0);
-  });
-  return rows;
-}
-function crossRows(mode, p) {
+function marginOf(mode, e) { return mode === 'golden' ? (e.dif - e.dea) : (e.dea - e.dif); }
+function boardRows(mode, p) {
   if (!DATA) return [];
   var per = DATA.periods || {};
   var rows;
   if (mode === 'golden') rows = p === 'day' ? (DATA.golden || []) : ((per[p] || {}).macd_golden || []);
   else rows = p === 'day' ? (DATA.death || []) : ((per[p] || {}).macd_death || []);
-  rows = etfOnly(rows);
+  rows = rows.filter(function(e) { return e.kind === 'ETF'; });
+  var dir = sortDir[mode];
   rows.sort(function(a, b) {
-    var ma = mode === 'golden' ? (a.dif - a.dea) : (a.dea - a.dif);
-    var mb = mode === 'golden' ? (b.dif - b.dea) : (b.dea - b.dif);
-    return ma - mb;
+    var d = marginOf(mode, a) - marginOf(mode, b);
+    return dir === 'near' ? d : -d;
   });
   return rows;
-}
-function etaDate(days) {
-  if (days == null || !DATA || !DATA.date) return '';
-  var parts = DATA.date.split('-');
-  var dt = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-  var left = days;
-  while (left > 0) {
-    dt.setDate(dt.getDate() + 1);
-    var wd = dt.getDay();
-    if (wd !== 0 && wd !== 6) left--;
-  }
-  return (dt.getMonth() + 1) + '月' + dt.getDate() + '日';
 }
 function volHtml(secid) {
   var q = QUOTES[secid];
   if (!q) return '量 — · 额 —';
   return '量 ' + fmtVol(q.vol) + ' · 额 ' + fmtAmt(q.amt);
 }
-function renderNear() {
-  var rows = nearRows();
-  if (!rows.length) { $('nearList').innerHTML = '<div class="stat">今日暂无即将金叉的 ETF</div>'; $('nearStat').textContent = ''; return; }
-  $('nearList').innerHTML = rows.slice(0, nearShown).map(function(e, i) {
-    return '<div class="nrow" data-i="' + i + '"><div style="min-width:0"><div class="nm">' + esc(e.name) + '<small>' + esc(e.code) + '</small></div>' +
-      '<div class="meta">' + volHtml(e.secid) + '</div></div>' +
-      '<div class="rt"><div class="eta">' + (e.days == null ? '—' : '约 ' + e.days + ' 天') + '</div>' +
-      '<div class="etad">' + (e.days == null ? '' : '预计 ' + etaDate(e.days)) + '</div></div></div>';
-  }).join('');
-  Array.prototype.forEach.call($('nearList').querySelectorAll('.nrow'), function(el) {
-    el.onclick = function() { openDetail(rows[Number(el.getAttribute('data-i'))], 'day'); };
+function renderBoard() {
+  $('boardTitle').textContent = curMode === 'golden' ? 'MACD 金叉' : 'MACD 死叉';
+  $('sortLabel').textContent = curMode === 'golden' ? '距金叉点' : '距死叉点';
+  $('sortNear').classList.toggle('on', sortDir[curMode] === 'near');
+  $('sortFar').classList.toggle('on', sortDir[curMode] === 'far');
+  $('boardTip').textContent = (sortDir[curMode] === 'near' ? '当前按距交叉点从近到远排（刚交叉的在最前）。' : '当前按距交叉点从远到近排。') + '点任意一只看它的图（K线 + MACD + KDJ）。';
+  var html = '';
+  ['day', 'week', 'month'].forEach(function(p) {
+    var rows = boardRows(curMode, p);
+    var shown = shownMap[curMode][p];
+    html += '<div class="col"><div class="colh">' + P_LABEL[p] + '<small>共 ' + rows.length + ' 只</small>' +
+      (p === 'day' ? '' : '<span class="prov">未定格</span>') + '</div>';
+    if (!rows.length) {
+      html += '<div class="stat">暂无</div>';
+    } else {
+      html += rows.slice(0, shown).map(function(e, i) {
+        return '<div class="prow" data-p="' + p + '" data-i="' + i + '"><div class="nm">' + esc(e.name) + '</div>' +
+          '<div class="meta">' + esc(e.code) + ' · ' + volHtml(e.secid) + '</div></div>';
+      }).join('');
+      if (rows.length > shown) html += '<button class="more" data-p="' + p + '">显示更多（剩 ' + (rows.length - shown) + ' 只）</button>';
+    }
+    html += '</div>';
   });
-  $('nearMore').style.display = rows.length > nearShown ? 'block' : 'none';
-  $('nearStat').textContent = '共 ' + rows.length + ' 只' + (rows.length > nearShown ? ' · 已显示 ' + nearShown : '');
-}
-$('nearMore').onclick = function() { nearShown += 40; renderNear(); };
-function renderPanel(mode) {
-  var p = panelPeriod[mode];
-  var rows = crossRows(mode, p);
-  var listEl = $(mode === 'golden' ? 'goldList' : 'deadList');
-  var moreEl = $(mode === 'golden' ? 'goldMore' : 'deadMore');
-  var shown = panelShown[mode][p];
-  if (!rows.length) { listEl.innerHTML = '<div class="stat">暂无</div>'; moreEl.style.display = 'none'; return; }
-  listEl.innerHTML = rows.slice(0, shown).map(function(e, i) {
-    return '<div class="prow" data-i="' + i + '"><div class="nm">' + esc(e.name) + '</div>' +
-      '<div class="meta">' + esc(e.code) + ' · ' + volHtml(e.secid) + '</div></div>';
-  }).join('');
-  Array.prototype.forEach.call(listEl.querySelectorAll('.prow'), function(el) {
-    el.onclick = function() { openDetail(rows[Number(el.getAttribute('data-i'))], p); };
-  });
-  moreEl.style.display = rows.length > shown ? 'block' : 'none';
-  moreEl.textContent = '显示更多（共 ' + rows.length + ' 只）';
-}
-function bindSeg(segId, fn) {
-  Array.prototype.forEach.call($(segId).querySelectorAll('button'), function(btn) {
-    btn.onclick = function() {
-      Array.prototype.forEach.call($(segId).querySelectorAll('button'), function(b) { b.classList.remove('on'); });
-      btn.classList.add('on');
-      fn(btn.getAttribute('data-p'));
+  $('boardCols').innerHTML = html;
+  Array.prototype.forEach.call($('boardCols').querySelectorAll('.prow'), function(el) {
+    el.onclick = function() {
+      var p = el.getAttribute('data-p');
+      openDetail(boardRows(curMode, p)[Number(el.getAttribute('data-i'))], p);
     };
   });
+  Array.prototype.forEach.call($('boardCols').querySelectorAll('.more'), function(el) {
+    el.onclick = function() { shownMap[curMode][el.getAttribute('data-p')] += PAGE; renderBoard(); };
+  });
 }
-bindSeg('goldSeg', function(p) { panelPeriod.golden = p; renderPanel('golden'); });
-bindSeg('deadSeg', function(p) { panelPeriod.death = p; renderPanel('death'); });
-$('goldMore').onclick = function() { panelShown.golden[panelPeriod.golden] += 30; renderPanel('golden'); };
-$('deadMore').onclick = function() { panelShown.death[panelPeriod.death] += 30; renderPanel('death'); };
-function renderLists() { renderNear(); renderPanel('golden'); renderPanel('death'); }
+function setMode(m) {
+  curMode = m;
+  $('swGold').classList.toggle('on-g', m === 'golden');
+  $('swDead').classList.toggle('on-d', m === 'death');
+  renderBoard();
+}
+function setSort(d) {
+  sortDir[curMode] = d;
+  renderBoard();
+}
+$('swGold').onclick = function() { setMode('golden'); };
+$('swDead').onclick = function() { setMode('death'); };
+$('sortNear').onclick = function() { setSort('near'); };
+$('sortFar').onclick = function() { setSort('far'); };
 
 /* ---------- 量 / 额 / 现价（批量行情） ---------- */
 function fetchJSON(url, timeoutMs) {
@@ -248,9 +213,11 @@ function fmtAmt(v) {
 }
 async function loadQuotes() {
   var seen = {}, secids = [];
-  function add(e) { if (!seen[e.secid]) { seen[e.secid] = 1; secids.push(e.secid); } }
-  nearRows().forEach(add);
-  ['golden', 'death'].forEach(function(m) { ['day', 'week', 'month'].forEach(function(p) { crossRows(m, p).forEach(add); }); });
+  ['golden', 'death'].forEach(function(m) {
+    ['day', 'week', 'month'].forEach(function(p) {
+      boardRows(m, p).forEach(function(e) { if (!seen[e.secid]) { seen[e.secid] = 1; secids.push(e.secid); } });
+    });
+  });
   if (!secids.length) return;
   var chunks = [];
   for (var i = 0; i < secids.length; i += 150) chunks.push(secids.slice(i, i + 150));
@@ -263,7 +230,7 @@ async function loadQuotes() {
     var diff = (j && j.data && j.data.diff) || [];
     diff.forEach(function(x) { QUOTES[x.f13 + '.' + x.f12] = { price: x.f2, pct: x.f3, vol: x.f5, amt: x.f6 }; });
   }
-  renderLists();
+  renderBoard();
   if (detailEntry) renderDetailQuote();
 }
 
@@ -420,7 +387,14 @@ function renderDetailQuote() {
   if (!q) { $('dQuote').textContent = '量 — · 额 —'; return; }
   $('dQuote').innerHTML = '现价 <b>' + fmt(q.price, 3) + '</b> · <span class="' + cls(q.pct) + '">' + (q.pct > 0 ? '+' : '') + fmt(q.pct, 2) + '%</span> · 量 <b>' + fmtVol(q.vol) + '</b> · 额 <b>' + fmtAmt(q.amt) + '</b>';
 }
-bindSeg('dSeg', function(p) { detailPeriod = p; loadDetailChart(); });
+Array.prototype.forEach.call($('dSeg').querySelectorAll('button'), function(btn) {
+  btn.onclick = function() {
+    Array.prototype.forEach.call($('dSeg').querySelectorAll('button'), function(b) { b.classList.remove('on'); });
+    btn.classList.add('on');
+    detailPeriod = btn.getAttribute('data-p');
+    loadDetailChart();
+  };
+});
 $('dClose').onclick = function() { $('detail').style.display = 'none'; detailEntry = null; };
 async function loadDetailChart() {
   if (!detailEntry) return;
@@ -452,12 +426,12 @@ fetch('./macd-cross.json?t=' + Date.now()).then(function(r) { return r.json(); }
   DATA = j;
   $('dateBadge').textContent = '名单日期 ' + (j.date || '—');
   $('dateBadge').classList.remove('load');
-  $('subInfo').textContent = '名单日期 ' + (j.date || '—') + ' · 只含 ETF · 生成于 ' + (j.generated_at || '—') + ' · 工作日收盘后更新 · 点任意标的看图';
-  renderLists();
+  $('subInfo').textContent = '名单日期 ' + (j.date || '—') + ' · 只含 ETF · 生成于 ' + (j.generated_at || '—') + ' · 工作日收盘后更新';
+  renderBoard();
   loadQuotes();
 }).catch(function() {
   $('subInfo').textContent = '名单加载失败，请稍后刷新重试。';
-  $('nearList').innerHTML = '<div class="stat">加载失败</div>';
+  $('boardCols').innerHTML = '<div class="stat">加载失败</div>';
 });
 </script>
 </body>
