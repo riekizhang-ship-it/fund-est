@@ -27,10 +27,12 @@
   .sortseg button { border:1px solid var(--line); background:#fff; border-radius:99px; padding:5px 13px; font-size:12.5px; color:var(--ink); }
   .sortseg button.on { background:#1c1e21; color:#fff; border-color:#1c1e21; }
   .tip { font-size:12px; color:var(--sub); margin:4px 0 2px; }
-  .cols { display:grid; grid-template-columns:repeat(auto-fit, minmax(290px, 1fr)); gap:14px; margin-top:4px; }
-  .colh { font-size:15px; font-weight:600; padding:4px 2px 2px; }
-  .colh small { color:var(--sub); font-weight:400; font-size:12px; margin-left:6px; }
-  .colh .prov { color:#b97d1e; font-weight:400; font-size:11.5px; margin-left:6px; }
+  .perseg { display:flex; gap:6px; margin:8px 0 2px; }
+  .perseg button { flex:1; border:1px solid var(--line); background:#fff; border-radius:99px; padding:7px 0; font-size:13.5px; color:var(--ink); }
+  .perseg button.on { background:#1c1e21; color:#fff; border-color:#1c1e21; }
+  .perhead { font-size:15px; font-weight:600; padding:6px 2px 2px; }
+  .perhead small { color:var(--sub); font-weight:400; font-size:12px; margin-left:6px; }
+  .perhead .prov { color:#b97d1e; font-weight:400; font-size:11.5px; margin-left:6px; }
   .prow { padding:9px 2px; border-top:1px solid var(--line); cursor:pointer; }
   .prow .nm { font-size:14.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .prow .meta { color:var(--sub); font-size:11.5px; margin-top:2px; font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -79,10 +81,16 @@
       </div>
     </div>
     <div class="tip" id="boardTip">点任意一只看它的图（K线 + MACD + KDJ）。</div>
-    <div class="cols" id="boardCols"><div class="stat">加载中…</div></div>
+    <div class="perseg" id="perSeg">
+      <button data-p="day" class="on">日K</button>
+      <button data-p="week">周K</button>
+      <button data-p="month">月K</button>
+    </div>
+    <div class="perhead" id="perHead"></div>
+    <div id="boardList"><div class="stat">加载中…</div></div>
   </section>
 
-  <div class="foot">只含全市场 ETF。金叉、死叉分开两个页面，用上方按钮切换；每页里日K、周K、月K 三列并列，可按距交叉点近→远 / 远→近自己切换排序。周K/月K 按最近一根 K 线计算，本周/本月没走完，标了「未定格」，周五/月末收盘才定格。名单每个工作日收盘后自动更新；量、额与图形为打开时拉取的最新数据。仅列技术形态，不构成买卖建议。</div>
+  <div class="foot">只含全市场 ETF。金叉、死叉分开两个页面，用上方按钮切换；每页里日K、周K、月K 用按钮切换、一次看一个列表，可按距交叉点近→远 / 远→近自己切换排序。周K/月K 按最近一根 K 线计算，本周/本月没走完，标了「未定格」，周五/月末收盘才定格。名单每个工作日收盘后自动更新；量、额与图形为打开时拉取的最新数据。仅列技术形态，不构成买卖建议。</div>
 </div>
 
 <div id="detail">
@@ -112,6 +120,7 @@ function cls(v) { return (v === null || v === undefined || isNaN(v)) ? '' : (v >
 var DATA = null, QUOTES = {};
 var curMode = 'golden';
 var sortDir = { golden: 'near', death: 'near' };
+var periodMap = { golden: 'day', death: 'day' };
 var PAGE = 40;
 var shownMap = { golden: { day: PAGE, week: PAGE, month: PAGE }, death: { day: PAGE, week: PAGE, month: PAGE } };
 var chartCache = {};
@@ -142,38 +151,28 @@ function volHtml(secid) {
   return '量 ' + fmtVol(q.vol) + ' · 额 ' + fmtAmt(q.amt);
 }
 function renderBoard() {
+  var p = periodMap[curMode];
   $('boardTitle').textContent = curMode === 'golden' ? 'MACD 金叉' : 'MACD 死叉';
   $('sortLabel').textContent = curMode === 'golden' ? '距金叉点' : '距死叉点';
   $('sortNear').classList.toggle('on', sortDir[curMode] === 'near');
   $('sortFar').classList.toggle('on', sortDir[curMode] === 'far');
+  Array.prototype.forEach.call($('perSeg').querySelectorAll('button'), function(b) {
+    b.classList.toggle('on', b.getAttribute('data-p') === p);
+  });
   $('boardTip').textContent = (sortDir[curMode] === 'near' ? '当前按距交叉点从近到远排（刚交叉的在最前）。' : '当前按距交叉点从远到近排。') + '点任意一只看它的图（K线 + MACD + KDJ）。';
-  var html = '';
-  ['day', 'week', 'month'].forEach(function(p) {
-    var rows = boardRows(curMode, p);
-    var shown = shownMap[curMode][p];
-    html += '<div class="col"><div class="colh">' + P_LABEL[p] + '<small>共 ' + rows.length + ' 只</small>' +
-      (p === 'day' ? '' : '<span class="prov">未定格</span>') + '</div>';
-    if (!rows.length) {
-      html += '<div class="stat">暂无</div>';
-    } else {
-      html += rows.slice(0, shown).map(function(e, i) {
-        return '<div class="prow" data-p="' + p + '" data-i="' + i + '"><div class="nm">' + esc(e.name) + '</div>' +
-          '<div class="meta">' + esc(e.code) + ' · ' + volHtml(e.secid) + '</div></div>';
-      }).join('');
-      if (rows.length > shown) html += '<button class="more" data-p="' + p + '">显示更多（剩 ' + (rows.length - shown) + ' 只）</button>';
-    }
-    html += '</div>';
+  var rows = boardRows(curMode, p);
+  var shown = shownMap[curMode][p];
+  $('perHead').innerHTML = P_LABEL[p] + '<small>共 ' + rows.length + ' 只</small>' + (p === 'day' ? '' : '<span class="prov">未定格</span>');
+  if (!rows.length) { $('boardList').innerHTML = '<div class="stat">暂无</div>'; return; }
+  $('boardList').innerHTML = rows.slice(0, shown).map(function(e, i) {
+    return '<div class="prow" data-i="' + i + '"><div class="nm">' + esc(e.name) + '</div>' +
+      '<div class="meta">' + esc(e.code) + ' · ' + volHtml(e.secid) + '</div></div>';
+  }).join('') + (rows.length > shown ? '<button class="more" id="boardMore">显示更多（剩 ' + (rows.length - shown) + ' 只）</button>' : '');
+  Array.prototype.forEach.call($('boardList').querySelectorAll('.prow'), function(el) {
+    el.onclick = function() { openDetail(boardRows(curMode, periodMap[curMode])[Number(el.getAttribute('data-i'))], periodMap[curMode]); };
   });
-  $('boardCols').innerHTML = html;
-  Array.prototype.forEach.call($('boardCols').querySelectorAll('.prow'), function(el) {
-    el.onclick = function() {
-      var p = el.getAttribute('data-p');
-      openDetail(boardRows(curMode, p)[Number(el.getAttribute('data-i'))], p);
-    };
-  });
-  Array.prototype.forEach.call($('boardCols').querySelectorAll('.more'), function(el) {
-    el.onclick = function() { shownMap[curMode][el.getAttribute('data-p')] += PAGE; renderBoard(); };
-  });
+  var mb = $('boardMore');
+  if (mb) mb.onclick = function() { shownMap[curMode][periodMap[curMode]] += PAGE; renderBoard(); };
 }
 function setMode(m) {
   curMode = m;
@@ -189,6 +188,9 @@ $('swGold').onclick = function() { setMode('golden'); };
 $('swDead').onclick = function() { setMode('death'); };
 $('sortNear').onclick = function() { setSort('near'); };
 $('sortFar').onclick = function() { setSort('far'); };
+Array.prototype.forEach.call($('perSeg').querySelectorAll('button'), function(btn) {
+  btn.onclick = function() { periodMap[curMode] = btn.getAttribute('data-p'); renderBoard(); };
+});
 
 /* ---------- 量 / 额 / 现价（批量行情） ---------- */
 function fetchJSON(url, timeoutMs) {
@@ -431,7 +433,7 @@ fetch('./macd-cross.json?t=' + Date.now()).then(function(r) { return r.json(); }
   loadQuotes();
 }).catch(function() {
   $('subInfo').textContent = '名单加载失败，请稍后刷新重试。';
-  $('boardCols').innerHTML = '<div class="stat">加载失败</div>';
+  $('boardList').innerHTML = '<div class="stat">加载失败</div>';
 });
 </script>
 </body>
