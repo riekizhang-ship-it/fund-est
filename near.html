@@ -14,6 +14,9 @@
   .badge { display:inline-block; vertical-align:2px; margin-left:8px; font-size:11px; padding:2px 8px; border-radius:99px; background:#e8f6ee; color:var(--down); }
   .badge.load { background:#eef1f5; color:var(--sub); }
   .nav { font-size:13px; margin-top:6px; }
+  .boardswitch { display:flex; gap:4px; background:#eef1f5; border-radius:99px; padding:3px; margin:6px 0 2px; }
+  .boardswitch a, .boardswitch span { flex:1; text-align:center; font-size:13px; padding:6px 0; border-radius:99px; color:#5a5f66; text-decoration:none; white-space:nowrap; }
+  .boardswitch span.on { background:#1c1e21; color:#fff; font-weight:600; }
   .nav a { color:#2f6fd0; text-decoration:none; margin-right:14px; }
   .sub { color:var(--sub); font-size:12.5px; margin-top:6px; }
   .switch { display:flex; gap:10px; margin-top:12px; }
@@ -63,7 +66,7 @@
 <div class="wrap">
   <header>
     <h1>ETF标的榜单</h1><span class="badge load" id="dateBadge">加载中…</span>
-    <div class="nav"><a href="./index.html">指数基金实时估算榜</a><a href="./rank.html">全市场涨跌榜+自选</a><a href="./etf.html">ETF实时榜·资金流</a></div>
+    <div class="boardswitch"><a href="index.html">估算榜</a><a href="rank.html">涨跌榜</a><a href="etf.html">ETF资金流</a><span class="on">金叉死叉榜</span></div>
     <div class="sub" id="subInfo">正在加载名单…</div>
   </header>
 
