@@ -232,7 +232,7 @@ async function loadQuotes() {
   if (liveOK) {
     setBadge();
     document.getElementById('hdrSub').innerHTML =
-      '跟踪指数实时涨跌推算 · 一个指数一只代表基金 · 共 <b>' + Object.keys(EST).length + '</b> 个指数' +
+      '跟踪指数实时涨跌推算 · 一个指数一只代表基金 · 共 <b>' + SECIDS.length + '</b> 个指数' +
       ' · 更新 ' + new Date().toLocaleTimeString('zh-CN', { hour12: false });
     applyFilter();
   } else {
